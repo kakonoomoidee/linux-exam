@@ -56,17 +56,23 @@ describe('POST /api/admin/sessions (create)', () => {
     expect(res.body.duration_minutes).toBe(-5);
   });
 
-  test('FINDING: a non-numeric duration makes Session.create reject, and the route has no try/catch for it', async () => {
-    const Session = require('../../src/models/Session');
-    // The DB rejects fast...
-    await expect(Session.create({ name: 'X', duration_minutes: 'abc' })).rejects.toThrow(
-      /invalid input syntax for type integer/
-    );
-    // ...but POST /api/admin/sessions {duration_minutes:'abc'} never sends a
-    // response: the handler is `async` with no try/catch, and Express 4 does
-    // not route async-handler rejections to the error middleware. Not asserted
-    // over HTTP here because the leaked rejection would fail the test runner.
-    // See FINDINGS in the PR — this pattern affects every unguarded async route.
+  test('a DB error inside the async handler yields a 500 JSON response, not a hung request (express-async-errors)', async () => {
+    // `duration_minutes: 'abc'` makes Session.create reject with a
+    // SequelizeDatabaseError mid-handler. Before express-async-errors this
+    // request never got a response; now it must resolve as a clean 500.
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(app)
+        .post('/api/admin/sessions')
+        .set(auth)
+        .send({ name: 'X', duration_minutes: 'abc' });
+
+      expect(res.status).toBe(500);
+      expect(res.headers['content-type']).toMatch(/application\/json/);
+      expect(res.body).toEqual({ error: 'Internal server error' });
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });
 

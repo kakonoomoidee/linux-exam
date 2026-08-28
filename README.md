@@ -138,24 +138,26 @@ npx jest tests/unit       # subset
 
 Struktur: `tests/unit/` (evaluator, lockService, User, importService,
 containerDrivers) + `tests/integration/` (auth, adminSessions, adminQuestions,
-cmd-log webhook, submit flow, review/grades, lockdown sockets). Helper di
-`tests/helpers/` — `db.js` (`useTestDb()`), `factory.js` (row builders),
-`server.js` (app + Socket.IO di port ephemeral), `sioclient.js` (klien
-Socket.IO minimal di atas `ws`, karena repo nggak punya `socket.io-client`).
+cmd-log webhook, submit flow, review/grades, lockdown sockets, async-error
+handling). Helper di `tests/helpers/` — `db.js` (`useTestDb()`), `factory.js`
+(row builders), `server.js` (app + Socket.IO di port ephemeral), `sioclient.js`
+(klien Socket.IO minimal di atas `ws`, karena repo nggak punya
+`socket.io-client`).
 
-**Coverage saat ini** (`npm run test:coverage`, 142 test / 13 suite):
+**Coverage saat ini** (`npm run test:coverage`, 150 test / 14 suite):
 
 | | Statements | Branches | Functions | Lines |
 |---|---|---|---|---|
-| All files | 84.6% | 73.8% | 77.5% | 87.5% |
+| All files | 85.2% | 73.8% | 79.4% | 87.8% |
 
 Yang sengaja rendah: `containerDrivers.js` (25% — `DockerDriver` butuh daemon
 Docker beneran; `MockDriver` 100%), `config/index.js` branch (cuma `||`
 fallback env var), sebagian route `adminReview.js` (review board per-soal +
 bulk-accept belum ditest). Baseline buat dipantau, bukan target 100%.
 
-Lihat `tests/FINDINGS.md` — bug beneran yang ketemu pas nulis test (belum
-difix, test-nya assert behavior sekarang + ditandai `FINDING:`).
+Lihat `tests/FINDINGS.md` — bug yang ketemu pas nulis test. #1 (async handler
+error bikin request hang) udah difix pakai `express-async-errors`. #2–#5 belum
+difix; test-nya assert behavior sekarang + ditandai `FINDING:`.
 
 ## Bahasa (i18n)
 
@@ -303,6 +305,11 @@ npm run import-questions -- /path/ke/soal.xlsx
 - **Auto-grade adalah starting point, bukan nilai final** — `final_score`
   di tabel `submissions` nullable; kalau belum di-review manual, sistem
   fallback ke `auto_score` buat total nilai.
+- **`require('express-async-errors')` di paling atas `app.js`** — Express 4
+  gak nge-forward rejected promise dari async route handler ke error
+  middleware, jadi tanpa ini `await` yang throw di handler bikin request
+  hang selamanya (bukan 500). Dengan shim ini semua async rejection nyampe
+  ke `app.use((err,...))` yang balesin `500 { error }` JSON. Jangan dicabut.
 - **Lockdown on tab-switch itu deteksi + deterrent + audit trail, BUKAN
   lockdown OS-level.** Client dengerin `visibilitychange` + `window.blur`,
   langsung nutup terminal & soal pas mahasiswa pindah tab / alt-tab, lalu

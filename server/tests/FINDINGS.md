@@ -1,30 +1,34 @@
 # Findings from the test pass
 
-Real bugs the test suite surfaced. **Not fixed** — each has a test that asserts
-the *current* behaviour, tagged `FINDING:` in the test name. Fix separately and
-flip the assertions.
+Real bugs the test suite surfaced. Findings 2–5 are **not fixed** — each has a
+test asserting the *current* behaviour, tagged `FINDING:` in the test name.
+Fix separately and flip the assertions.
 
 ---
 
-## 1. Async route handlers swallow errors → the request hangs forever
+## 1. Async route handlers swallow errors → the request hangs forever — ✅ FIXED
 
 **Severity: high.** Every route handler is `async` with no `try/catch`, and the
 app runs on **Express 4**, which does *not* forward a rejected promise from an
 async handler to the error middleware. So any error thrown after the first
 `await` in a handler → unhandled rejection → **no HTTP response is ever sent**.
-Not a 500 — the client just waits until it times out.
+Not a 500 — the client just waited until it timed out.
 
-Reproduced in `tests/integration/adminSessions.test.js`:
-`POST /api/admin/sessions` with `{ "duration_minutes": "abc" }` →
-`Session.create` rejects in ~90 ms with `invalid input syntax for type
-integer`, and the request never responds.
+Was reproduced with `POST /api/admin/sessions` + `{ "duration_minutes": "abc" }`
+(`Session.create` rejects in ~90 ms, the request never responded).
 
-Affected (any DB error on these paths hangs the caller): `routes/adminSessions.js`,
+Affected every unguarded async handler: `routes/adminSessions.js`,
 `routes/cmdLog.js`, `routes/adminReview.js`, `routes/auth.js`, `routes/student.js`.
 
-**Fix direction:** wrap handlers in an async-error helper (`const wrap = fn =>
-(req,res,next) => Promise.resolve(fn(req,res,next)).catch(next)`), or upgrade to
-Express 5 (auto-forwards rejections), or add per-handler `try/catch`.
+**Fix:** `require('express-async-errors')` at the top of `src/app.js` (before
+any router is created). It patches the router so every async rejection is
+routed to the existing `app.use((err, req, res, next) => …)` handler, which
+already replies `500 { error: 'Internal server error' }` as JSON.
+
+Covered by `tests/integration/asyncErrors.test.js` (rejection from two
+different routers → fast 500 JSON; resolving handlers unaffected) and the
+reworked case in `tests/integration/adminSessions.test.js` ("a DB error inside
+the async handler yields a 500 JSON response, not a hung request").
 
 ---
 
