@@ -177,6 +177,56 @@ harus dibikin manual dulu (`docker network create --internal
 tekser-sandbox-net`) dan `app`-nya sendiri juga harus join network yang
 sama biar bisa dipanggil balik.
 
+## Cleanup Docker setelah ujian
+
+Container sandbox tiap mahasiswa **di-hapus total** (`stop` + `remove`, bukan
+cuma stop) otomatis di ketiga skenario: submit manual, timer habis, dan admin
+hapus sesi. `driver.destroy()` idempotent — kalau container-nya udah gak ada,
+itu dianggap sukses, bukan error. Jadi dalam kondisi normal gak ada yang
+numpuk.
+
+Tapi tetap bisa ada sisa: provisioning yang gagal di tengah jalan, daemon
+hiccup, atau container yang di-`docker kill` manual. Dan tiap kali lu
+jalanin `docker compose up --build`, image lama jadi *dangling* (`<none>`).
+
+### Sapu container sandbox yang nyangkut
+
+```bash
+docker compose exec app npm run cleanup            # hapus tekser-* yang exited/dead/created
+docker compose exec app npm run cleanup -- --dry   # cuma list, gak hapus apa-apa
+docker compose exec app npm run cleanup -- --force # hapus JUGA yang masih running
+```
+
+Cuma nyentuh container yang namanya diawali `tekser-` (sandbox mahasiswa) —
+gak akan ganggu container `app` / `db`. Tanpa `--force`, container yang masih
+`running` **dibiarkan** (bisa jadi ada ujian yang lagi jalan). Jalanin di
+host langsung juga bisa (`cd server && npm run cleanup`) selama ada akses
+Docker socket.
+
+### Prune image & container yang numpuk
+
+```bash
+docker image prune -f       # hapus dangling image (<none>) dari build berulang
+docker container prune -f   # hapus semua container yang statusnya exited
+```
+
+**Kapan aman:** pas **gak ada sesi yang `running`** — cek dulu di dashboard
+admin (tab Sesi) atau:
+
+```bash
+docker exec linux-exam-db-1 psql -U tekser -d tekser -c \
+  "SELECT id,name,status FROM sessions WHERE status='running';"
+```
+
+Kalau kosong, aman. `docker container prune -f` bakal nyapu semua container
+exited termasuk `linux-exam-sandbox-image-1` (service build yang emang
+langsung exit) — itu wajar, ke-recreate lagi pas `docker compose up`
+berikutnya. `docker image prune -f` gak nyentuh image yang lagi kepakai
+(`tekser-sandbox:latest`, `postgres`, dll), cuma yang bener-bener dangling.
+
+Buat bersih-bersih lebih agresif (hati-hati — ngehapus SEMUA yang gak
+kepakai, bukan cuma punya proyek ini): `docker system prune -f`.
+
 ## Import soal dari Excel
 
 Format ada di `docs/contoh-bank-soal.xlsx` — 1 sheet per variant (nama sheet

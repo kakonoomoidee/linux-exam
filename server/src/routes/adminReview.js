@@ -108,6 +108,19 @@ router.get('/participants/:participantId/command-log', async (req, res) => {
   res.json(await CommandLog.listForParticipant(participant.id));
 });
 
+/**
+ * Full session transcript: every command every participant typed, time-ordered
+ * and interleaved, showing which question each one matched (if any). The
+ * "what did this student do the whole exam" view without clicking through
+ * every question × participant.
+ */
+router.get('/sessions/:sessionId/transcript', async (req, res) => {
+  const session = await Session.findById(req.params.sessionId);
+  if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
+  const entries = await CommandLog.listForSession(session.id);
+  res.json({ session, entries });
+});
+
 /** CSV export for the whole session, ready for the campus academic system. */
 router.get('/sessions/:sessionId/export.csv', async (req, res) => {
   const participants = await Session.listParticipants(req.params.sessionId);

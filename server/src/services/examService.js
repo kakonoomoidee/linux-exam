@@ -115,12 +115,12 @@ async function deleteSession(sessionId) {
   await Promise.all(
     participants.map(async (p) => {
       timerService.cancel(p.id);
-      if (p.container_id) {
-        try {
-          await containerService.teardownParticipant(p);
-        } catch (err) {
-          console.error(`[examService] teardown on delete failed for participant ${p.id}`, err);
-        }
+      // always attempt teardown — teardownParticipant handles the no-container
+      // case itself and can still catch an orphan by its deterministic name.
+      try {
+        await containerService.teardownParticipant(p);
+      } catch (err) {
+        console.error(`[examService] teardown on delete failed for participant ${p.id}`, err.message);
       }
     })
   );

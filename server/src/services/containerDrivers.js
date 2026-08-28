@@ -62,21 +62,42 @@ class DockerDriver {
     return { exitCode: inspect.ExitCode, output };
   }
 
+  /**
+   * Stop + remove a container. Idempotent: if the container is already gone
+   * (404) that's the desired end state, so it counts as success — a stale DB
+   * row or a double teardown must not spam errors. Only a genuinely broken
+   * daemon (any other status) propagates.
+   * `containerId` may be an id or the container name (`tekser-<token>`).
+   */
   async destroy(containerId) {
     const container = this.docker.getContainer(containerId);
     try {
       await container.stop({ t: 2 });
     } catch (e) {
-      // already stopped, ignore
+      if (e.statusCode !== 404 && e.statusCode !== 304) throw e; // 304 = already stopped
     }
-    await container.remove({ force: true });
+    try {
+      await container.remove({ force: true });
+    } catch (e) {
+      if (e.statusCode !== 404) throw e; // already removed → idempotent success
+    }
   }
 
-  /** Returns a stream-like exec attach for the interactive PTY bridge (see sockets/terminalSocket.js). */
+  /**
+   * Returns a stream-like exec attach for the interactive PTY bridge (see
+   * sockets/terminalSocket.js).
+   *
+   * `-l` (login shell) is REQUIRED: the command-logging hook lives at
+   * /etc/profile.d/tekser-hook.sh and is only sourced by login shells. A plain
+   * `docker exec bash` is an interactive NON-login shell — it never reads
+   * /etc/profile, so PROMPT_COMMAND is never set and no command is ever
+   * reported for grading. (The image's default CMD is `bash -l`, but that's a
+   * different process the student never touches — they connect via this exec.)
+   */
   async attachInteractive(containerId) {
     const container = this.docker.getContainer(containerId);
     const exec = await container.exec({
-      Cmd: ['/bin/bash'],
+      Cmd: ['/bin/bash', '-l'],
       AttachStdin: true,
       AttachStdout: true,
       AttachStderr: true,

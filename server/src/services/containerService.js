@@ -64,8 +64,15 @@ async function runStateChecker(containerId, script) {
 }
 
 async function teardownParticipant(participant) {
-  if (participant.container_id) {
-    await withTimeout(driver.destroy(participant.container_id), 10000, 'container destroy');
+  // container_id is the reliable handle; fall back to the deterministic name
+  // (tekser-<session_token>, see DockerDriver.create) so a container orphaned
+  // before its id was persisted — provisioning crashed mid-create — still gets
+  // swept up. driver.destroy is idempotent, so a missing container is a no-op.
+  const handle =
+    participant.container_id ||
+    (participant.session_token && `tekser-${participant.session_token}`);
+  if (handle) {
+    await withTimeout(driver.destroy(handle), 10000, 'container destroy');
   }
   return Session.updateParticipant(participant.id, {
     container_status: 'destroyed',

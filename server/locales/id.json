@@ -84,5 +84,12 @@
   "admin.status.provisioning": "menyiapkan",
   "admin.status.destroyed": "selesai",
   "student.submitting": "Mengirim jawaban dan mengakhiri sesi...",
-  "student.submitTakingLong": "Proses mengakhiri sesi lebih lama dari biasanya. Tunggu sebentar lagi — jika tidak selesai juga, hubungi asisten dosen."
+  "student.submitTakingLong": "Proses mengakhiri sesi lebih lama dari biasanya. Tunggu sebentar lagi — jika tidak selesai juga, hubungi asisten dosen.",
+  "admin.sessionTranscript": "Transkrip Sesi",
+  "admin.allParticipants": "Semua peserta",
+  "admin.time": "Waktu",
+  "admin.command": "Command",
+  "admin.exit": "Exit",
+  "admin.question": "Soal",
+  "admin.noCommandsSession": "Belum ada command yang tercatat di sesi ini."
 }
