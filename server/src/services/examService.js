@@ -43,7 +43,18 @@ async function startSession(sessionId) {
 async function endParticipant(participantId) {
   timerService.cancel(participantId);
   const participant = await Session.getParticipant(participantId);
-  if (!participant || participant.container_status !== 'active') return;
+  if (!participant) return;
+
+  // idempotency guard: two triggers can race (student hits Submit right as
+  // the timer fires) — only the first one should actually run this.
+  if (!['active'].includes(participant.container_status)) return;
+
+  // Flip the gate immediately, before any container work. cmd-log grading
+  // and the terminal socket both key off this status, so from this instant
+  // the exam is over for the student regardless of how long teardown takes
+  // or whether it succeeds at all — teardown must never be what the student
+  // (or the "10 minutes is up" guarantee) waits on.
+  await Session.updateParticipant(participant.id, { container_status: 'ending' });
 
   const questions = await Question.listForVariantIndex(participant.variant_index);
 
@@ -59,16 +70,34 @@ async function endParticipant(participantId) {
           auto_score: passed ? q.point : 0,
         });
       } catch (err) {
-        console.error(`[examService] state checker failed for Q${q.id}`, err);
+        console.error(`[examService] state checker failed for Q${q.id}`, err.message);
       }
     }
   }
 
-  await containerService.teardownParticipant(participant);
+  // Best-effort: a teardown failure (container already gone, docker daemon
+  // hiccup, image issue) must never stop the exam from being marked ended —
+  // the student is actively waiting on this to resolve.
+  try {
+    await containerService.teardownParticipant(participant);
+  } catch (err) {
+    console.error(`[examService] teardown failed for participant ${participant.id}, ending anyway`, err.message);
+  }
+
   await Session.updateParticipant(participant.id, { container_status: 'ended' });
 
   const submissions = await Submission.listForParticipant(participant.id);
   emitToParticipant(participant.session_token, 'exam:ended', { submissions });
+
+  // Hard stop: force-close any lingering terminal socket(s) for this
+  // participant a beat after the payload above, so the browser can't keep
+  // sending terminal:input after time is up even if the client-side screen
+  // switch is somehow bypassed.
+  if (io) {
+    setTimeout(() => {
+      io.in(`participant:${participant.session_token}`).disconnectSockets(true);
+    }, 300);
+  }
 }
 
 /** Student clicks "Submit" before time runs out. */

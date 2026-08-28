@@ -143,6 +143,8 @@ function connectSocket(sessionToken) {
 
   socket.on('exam:ended', ({ submissions }) => {
     clearInterval(timerInterval);
+    clearTimeout(window.__submitStallTimer);
+    window.Swal && window.Swal.close(); // in case the "submitting..." loading modal is still open
     lastFinalSubmissions = submissions;
     renderFinalResults(submissions);
     showScreen('ended');
@@ -150,11 +152,7 @@ function connectSocket(sessionToken) {
 }
 
 function showToast(text) {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = text;
-  document.getElementById('toast-container').appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+  window.ui.toast(text, 'success');
 }
 
 function startTimer(remainingMs) {
@@ -181,12 +179,40 @@ function startTimer(remainingMs) {
 }
 
 async function submitExam() {
-  if (!confirm(t('student.submitConfirm'))) return;
-  await fetch(`${API}/me/submit`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  // server will emit exam:ended over the socket once teardown finishes
+  const ok = await window.ui.confirm(t('student.submitConfirm'), { icon: 'warning', confirmText: t('student.submitNow') });
+  if (!ok) return;
+
+  const closeLoading = window.ui.loading(t('student.submitting'));
+  document.getElementById('submit-btn').disabled = true;
+
+  // Safety net: if teardown takes unusually long (or the server never gets
+  // to emit exam:ended for some reason), don't leave the student staring at
+  // a spinner forever — tell them what's happening after a while.
+  const stall = setTimeout(() => {
+    closeLoading();
+    window.ui.alert(t('student.submitTakingLong'), { icon: 'info' });
+  }, 20000);
+
+  try {
+    const res = await fetch(`${API}/me/submit`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(window.i18n.apiError(data.error) || t('common.requestFailed', { status: res.status }));
+    }
+    // server acked the submit; exam:ended over the socket (handled below)
+    // is what actually closes the loading modal and switches screens.
+  } catch (err) {
+    clearTimeout(stall);
+    closeLoading();
+    document.getElementById('submit-btn').disabled = false;
+    window.ui.alert(err.message, { icon: 'error' });
+  }
+
+  // exam:ended clears `stall` too (see connectSocket)
+  window.__submitStallTimer = stall;
 }
 
 function renderFinalResults(submissions) {

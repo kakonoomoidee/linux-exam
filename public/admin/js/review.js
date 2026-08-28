@@ -95,7 +95,7 @@ async function loadReviewTable() {
       const participantId = btn.dataset.participant;
       const fullLog = await apiFetch(`/admin/review/participants/${participantId}/command-log`);
       const lines = fullLog.map((c) => `[${c.exit_code}] ${c.raw_command}`).join('\n') || t('admin.noCmdsAtAll');
-      alert(`${t('admin.allCmdsTitle')}\n\n${lines}`);
+      window.ui.alertPre(t('admin.allCmdsTitle'), lines);
     });
   });
 }

@@ -6,6 +6,19 @@ const { buildDriver } = require('./containerDrivers');
 const driver = buildDriver();
 
 /**
+ * Races a driver call against a timeout so a hung Docker daemon connection
+ * (dead socket, dockerode promise that never settles) can never block exam
+ * flow forever — it surfaces as a normal rejected promise instead.
+ */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
  * Provisions a container for one participant, sets their session_token
  * (used to authenticate the callback + the student's browser session),
  * and starts their personal exam timer once the container is ready.
@@ -20,10 +33,11 @@ async function provisionParticipant(participant, durationMinutes) {
   });
 
   try {
-    const containerId = await driver.create({
-      participantId: participant.id,
-      sessionToken,
-    });
+    const containerId = await withTimeout(
+      driver.create({ participantId: participant.id, sessionToken }),
+      20000,
+      'container create'
+    );
 
     const startedAt = new Date();
     const endsAt = new Date(startedAt.getTime() + durationMinutes * 60 * 1000);
@@ -35,21 +49,23 @@ async function provisionParticipant(participant, durationMinutes) {
       ends_at: endsAt.toISOString(),
     });
   } catch (err) {
-    console.error(`[containerService] provisioning failed for participant ${participant.id}`, err);
+    // most common cause: CONTAINER_DRIVER=docker but the tekser-sandbox image
+    // was never built, so dockerode's createContainer 404s on the image name.
+    console.error(`[containerService] provisioning failed for participant ${participant.id}`, err.message);
     return Session.updateParticipant(participant.id, { container_status: 'error' });
   }
 }
 
 /** Runs a question's state_checker_script inside the container; expects last output line PASS/FAIL. */
 async function runStateChecker(containerId, script) {
-  const { output } = await driver.exec(containerId, script);
+  const { output } = await withTimeout(driver.exec(containerId, script), 10000, 'state checker exec');
   const lastLine = output.trim().split('\n').pop();
   return lastLine === 'PASS';
 }
 
 async function teardownParticipant(participant) {
   if (participant.container_id) {
-    await driver.destroy(participant.container_id);
+    await withTimeout(driver.destroy(participant.container_id), 10000, 'container destroy');
   }
   return Session.updateParticipant(participant.id, {
     container_status: 'destroyed',

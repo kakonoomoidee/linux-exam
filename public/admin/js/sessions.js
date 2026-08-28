@@ -1,9 +1,10 @@
 let currentSessionId = null;
+let sessionCountdownInterval = null;
 
 document.getElementById('create-session-btn').addEventListener('click', async () => {
   const name = document.getElementById('new-session-name').value.trim();
   const duration_minutes = parseInt(document.getElementById('new-session-duration').value, 10) || 10;
-  if (!name) return alert(t('admin.sessionNameRequired'));
+  if (!name) return window.ui.alert(t('admin.sessionNameRequired'), { icon: 'warning' });
   await apiFetch('/admin/sessions', { method: 'POST', body: JSON.stringify({ name, duration_minutes }) });
   document.getElementById('new-session-name').value = '';
   loadSessions();
@@ -31,9 +32,10 @@ document.getElementById('add-participants-btn').addEventListener('click', async 
 });
 
 document.getElementById('start-session-btn').addEventListener('click', async () => {
-  if (!confirm(t('admin.startConfirm'))) return;
+  const ok = await window.ui.confirm(t('admin.startConfirm'), { icon: 'warning', confirmText: t('admin.startSession') });
+  if (!ok) return;
   await apiFetch(`/admin/sessions/${currentSessionId}/start`, { method: 'POST' });
-  alert(t('admin.provisioningStarted'));
+  window.ui.toast(t('admin.provisioningStarted'), 'info');
   setTimeout(() => loadParticipants(currentSessionId), 3000);
 });
 
@@ -46,6 +48,10 @@ async function loadSessions() {
       (s) => `
       <div class="session-row flex items-center gap-3 py-2.5 px-2 rounded-[var(--radius-sm)] hover:bg-[color:var(--surface-2)]" data-id="${s.id}">
         <span class="session-open flex-1 min-w-0 truncate cursor-pointer">${s.name} <small class="text-[color:var(--text-faint)]">(${t('common.minutes', { n: s.duration_minutes })})</small></span>
+        ${s.status === 'running' && s.started_at
+          ? `<span class="session-countdown text-xs font-mono font-semibold text-[color:var(--text-muted)]"
+               data-ends-at="${new Date(new Date(s.started_at).getTime() + s.duration_minutes * 60000).toISOString()}">--:--</span>`
+          : ''}
         <span class="badge ${statusBadge[s.status] || ''}">${t('admin.status.' + s.status)}</span>
         <button class="session-delete btn btn-ghost btn-sm" data-id="${s.id}"
           title="${t('admin.deleteSession')}" aria-label="${t('admin.deleteSession')}">✕</button>
@@ -57,7 +63,8 @@ async function loadSessions() {
   });
   list.querySelectorAll('.session-delete').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (!confirm(t('admin.deleteConfirm'))) return;
+      const ok = await window.ui.confirm(t('admin.deleteConfirm'), { icon: 'warning', confirmText: t('admin.deleteSession') });
+      if (!ok) return;
       await apiFetch(`/admin/sessions/${btn.dataset.id}`, { method: 'DELETE' });
       if (String(currentSessionId) === btn.dataset.id) {
         currentSessionId = null;
@@ -66,6 +73,36 @@ async function loadSessions() {
       loadSessions();
     });
   });
+
+  startSessionCountdowns();
+}
+
+/**
+ * Ticks every "session-countdown" badge in the list once a second — this is
+ * a nominal display (session-level started_at + duration), separate from
+ * each participant's own precise per-container timer shown on their exam
+ * page. Good enough for "berapa menit lagi sesi ini" at a glance.
+ */
+function startSessionCountdowns() {
+  clearInterval(sessionCountdownInterval);
+  const tick = () => {
+    document.querySelectorAll('.session-countdown').forEach((el) => {
+      const endsAt = new Date(el.dataset.endsAt).getTime();
+      const remainingSec = Math.floor((endsAt - Date.now()) / 1000);
+      if (remainingSec <= 0) {
+        el.textContent = t('admin.timeUp');
+        el.classList.remove('text-[color:var(--text-muted)]');
+        el.classList.add('text-[color:var(--text-faint)]');
+        return;
+      }
+      const m = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+      const sec = String(remainingSec % 60).padStart(2, '0');
+      el.textContent = `${m}:${sec}`;
+      el.classList.toggle('text-[color:var(--danger)]', remainingSec <= 60);
+    });
+  };
+  tick();
+  sessionCountdownInterval = setInterval(tick, 1000);
 }
 
 function openSession(id, sessions) {

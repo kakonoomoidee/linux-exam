@@ -7,28 +7,28 @@
   --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  --bg: #0a0e17;
-  --surface: #121826;
-  --surface-2: #1a2233;
-  --border: #29344d;
-  --border-strong: #3d4a6b;
+  --bg: #f4f5f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f6;
+  --border: #e1e4ed;
+  --border-strong: #c7cce0;
 
-  --text: #e8ecf4;
-  --text-muted: #9aa7bd;
-  --text-faint: #6b7891;
+  --text: #1c2333;
+  --text-muted: #5b6478;
+  --text-faint: #8a93a8;
 
-  --accent: #6366f1;
-  --accent-hover: #7c7ff2;
-  --accent-weak: rgba(99, 102, 241, 0.14);
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-weak: rgba(79, 70, 229, 0.09);
 
-  --success: #22c55e;
-  --success-weak: rgba(34, 197, 94, 0.13);
-  --warn: #fbbf24;
-  --danger: #f87171;
+  --success: #16a34a;
+  --success-weak: rgba(22, 163, 74, 0.1);
+  --warn: #b45309;
+  --danger: #dc2626;
 
   --radius: 14px;
   --radius-sm: 9px;
-  --shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
+  --shadow: 0 14px 32px -16px rgba(30, 41, 59, 0.16);
 }
 
 html { background: var(--bg); }
@@ -169,7 +169,7 @@ select.field { cursor: pointer; }
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
-.badge-green { background: var(--success-weak); color: #4ade80; border-color: transparent; }
+.badge-green { background: var(--success-weak); color: #15803d; border-color: transparent; }
 .badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--warn); border-color: transparent; }
 .badge-gray  { background: var(--surface-2); color: var(--text-faint); border-color: transparent; }
 

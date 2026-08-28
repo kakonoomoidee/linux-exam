@@ -62,6 +62,41 @@ router.get('/participants/:participantId', async (req, res) => {
 });
 
 /**
+ * Grade sheet for one session: every participant with their solved/total
+ * question count and running total score (final_score where reviewed,
+ * auto_score otherwise) — the data behind the admin "Mahasiswa & Nilai" tab.
+ */
+router.get('/sessions/:sessionId/grades', async (req, res) => {
+  const session = await Session.findById(req.params.sessionId);
+  if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
+
+  const participants = await Session.listParticipants(session.id);
+  const rows = await Promise.all(
+    participants.map(async (p) => {
+      const submissions = await Submission.listForParticipant(p.id);
+      const total = submissions.reduce((sum, s) => sum + (s.final_score ?? s.auto_score), 0);
+      const maxTotal = submissions.reduce((sum, s) => sum + s.point, 0);
+      const solvedCount = submissions.filter((s) => s.auto_result === 'pass').length;
+      const reviewedCount = submissions.filter((s) => s.final_score !== null && s.final_score !== undefined).length;
+      return {
+        participant_id: p.id,
+        nim: p.nim,
+        name: p.name,
+        variant_index: p.variant_index,
+        container_status: p.container_status,
+        solvedCount,
+        totalQuestions: submissions.length,
+        reviewedCount,
+        total,
+        maxTotal,
+      };
+    })
+  );
+
+  res.json({ session, rows });
+});
+
+/**
  * Full raw command history for one participant, unfiltered by question — including
  * typos and unmatched attempts that never scored. This is the safety net for
  * reviewing "hampir benar" cases the per-question log can miss (e.g. a typo

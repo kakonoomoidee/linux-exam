@@ -9,7 +9,6 @@
   "common.questionN": "Question {n}",
   "common.errorPrefix": "Error: {msg}",
   "common.requestFailed": "Request failed ({status})",
-
   "student.title": "Linux Practical Exam",
   "student.loginSubtitle": "Sign in with your student ID to begin.",
   "student.timeLeft": "Time left",
@@ -26,7 +25,6 @@
   "student.provisionalTotal": "Provisional total: {total} pts",
   "student.finalRow": "Question {n}: {mark} ({score} pts)",
   "student.finalPending": "Final score pending instructor review.",
-
   "admin.title": "Admin - Tekser Exam",
   "admin.loginHeading": "Admin Login",
   "admin.loginSubtitle": "Sign in to manage exam sessions.",
@@ -72,7 +70,6 @@
   "admin.noCmdsAtAll": "(no commands at all yet)",
   "admin.allCmdsTitle": "All commands from this participant during the exam:",
   "admin.pointsAndType": "{point} pts, {type}",
-
   "nim wajib diisi": "student ID is required",
   "NIM tidak terdaftar": "Student ID not registered",
   "Kredensial salah": "Invalid credentials",
@@ -94,5 +91,20 @@
   "Admin only": "Admin only",
   "session_token dan cmd wajib diisi": "session_token and cmd are required",
   "fraction harus salah satu dari 0, 0.25, 0.5, 0.75, 1": "fraction must be one of 0, 0.25, 0.5, 0.75, 1",
-  "Gagal menyiapkan environment. Hubungi asisten dosen.": "Failed to prepare your environment. Contact the instructor."
+  "Gagal menyiapkan environment. Hubungi asisten dosen.": "Failed to prepare your environment. Contact the instructor.",
+  "common.cancel": "Cancel",
+  "admin.tabGrades": "Students & Grades",
+  "admin.gradesHeading": "Students & Grades",
+  "admin.solved": "Solved",
+  "admin.reviewed": "Reviewed",
+  "admin.totalScore": "Total Score",
+  "admin.noParticipantsYet": "No participants in this session yet.",
+  "admin.timeUp": "Done",
+  "admin.status.ending": "ending",
+  "admin.status.error": "error",
+  "admin.status.not_started": "not started",
+  "admin.status.provisioning": "provisioning",
+  "admin.status.destroyed": "done",
+  "student.submitting": "Submitting your answers and ending the session...",
+  "student.submitTakingLong": "Ending the session is taking longer than usual. Please wait a bit more — contact your instructor if it doesn't finish."
 }

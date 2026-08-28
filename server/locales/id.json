@@ -9,7 +9,6 @@
   "common.questionN": "Soal {n}",
   "common.errorPrefix": "Error: {msg}",
   "common.requestFailed": "Permintaan gagal ({status})",
-
   "student.title": "Ujian Praktikum Linux",
   "student.loginSubtitle": "Masuk dengan NIM untuk memulai.",
   "student.timeLeft": "Sisa waktu",
@@ -26,7 +25,6 @@
   "student.provisionalTotal": "Total sementara: {total} poin",
   "student.finalRow": "Soal {n}: {mark} ({score} poin)",
   "student.finalPending": "Nilai final menunggu review asisten dosen.",
-
   "admin.title": "Admin - Tekser Exam",
   "admin.loginHeading": "Admin Login",
   "admin.loginSubtitle": "Masuk untuk mengelola sesi ujian.",
@@ -71,5 +69,20 @@
   "admin.viewAllCmds": "Lihat semua command peserta ini",
   "admin.noCmdsAtAll": "(belum ada command sama sekali)",
   "admin.allCmdsTitle": "Semua command peserta ini selama ujian:",
-  "admin.pointsAndType": "{point} poin, {type}"
+  "admin.pointsAndType": "{point} poin, {type}",
+  "common.cancel": "Batal",
+  "admin.tabGrades": "Mahasiswa & Nilai",
+  "admin.gradesHeading": "Mahasiswa & Nilai",
+  "admin.solved": "Terjawab",
+  "admin.reviewed": "Direview",
+  "admin.totalScore": "Total Nilai",
+  "admin.noParticipantsYet": "Belum ada peserta di sesi ini.",
+  "admin.timeUp": "Selesai",
+  "admin.status.ending": "mengakhiri",
+  "admin.status.error": "gagal",
+  "admin.status.not_started": "belum mulai",
+  "admin.status.provisioning": "menyiapkan",
+  "admin.status.destroyed": "selesai",
+  "student.submitting": "Mengirim jawaban dan mengakhiri sesi...",
+  "student.submitTakingLong": "Proses mengakhiri sesi lebih lama dari biasanya. Tunggu sebentar lagi — jika tidak selesai juga, hubungi asisten dosen."
 }

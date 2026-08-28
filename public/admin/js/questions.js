@@ -1,6 +1,6 @@
 document.getElementById('import-questions-btn').addEventListener('click', async () => {
   const fileInput = document.getElementById('excel-file');
-  if (!fileInput.files.length) return alert(t('admin.pickExcelFirst'));
+  if (!fileInput.files.length) return window.ui.alert(t('admin.pickExcelFirst'), { icon: 'warning' });
 
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);

@@ -14,7 +14,8 @@ router.get('/me/active-participant', async (req, res) => {
   const participant = await db.get(
     `SELECT sp.* FROM session_participants sp
      JOIN sessions s ON s.id = sp.session_id
-     WHERE sp.user_id = $1 AND s.status = 'running' AND sp.container_status != 'destroyed'
+     WHERE sp.user_id = $1 AND s.status = 'running'
+       AND sp.container_status NOT IN ('destroyed', 'ended', 'ending')
      ORDER BY sp.id DESC LIMIT 1`,
     [req.user.id]
   );

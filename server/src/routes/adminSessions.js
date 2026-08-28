@@ -60,7 +60,7 @@ router.post('/:id/start', async (req, res) => {
   if (session.status === 'running') {
     const participants = await Session.listParticipants(session.id);
     const stuck = participants.filter(
-      (p) => !['active', 'ended', 'destroyed'].includes(p.container_status)
+      (p) => !['active', 'ending', 'ended', 'destroyed'].includes(p.container_status)
     );
     if (stuck.length === 0) {
       return res.status(400).json({ error: 'Sesi sudah berjalan dan semua peserta aktif' });

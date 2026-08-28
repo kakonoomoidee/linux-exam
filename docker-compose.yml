@@ -18,6 +18,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Builds and tags the per-student exam sandbox image as a normal part of
+  # `docker compose up --build`. It has nothing to actually run — it exits
+  # right after build — so "forgot to build the sandbox image" (the #1 cause
+  # of "container belum siap") can't happen anymore on a fresh checkout.
+  sandbox-image:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.sandbox
+    image: ${SANDBOX_IMAGE:-tekser-sandbox:latest}
+    command: ["true"]
+    restart: "no"
+
   app:
     build:
       context: .
@@ -40,6 +52,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      sandbox-image:
+        condition: service_completed_successfully
     # CONTAINER_DRIVER=docker spawns sibling sandbox containers on the host
     # daemon; needs the socket and a route back to the app for command logs.
     volumes:

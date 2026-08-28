@@ -44,20 +44,25 @@
         <button class="tab-btn active" data-tab="sessions" data-i18n="admin.tabSessions">Sesi</button>
         <button class="tab-btn" data-tab="questions" data-i18n="admin.tabQuestions">Bank Soal</button>
         <button class="tab-btn" data-tab="review" data-i18n="admin.tabReview">Review Nilai</button>
+        <button class="tab-btn" data-tab="grades" data-i18n="admin.tabGrades">Mahasiswa &amp; Nilai</button>
       </div>
     </nav>
 
     <%- include('partials/sessions-tab') %>
     <%- include('partials/questions-tab') %>
     <%- include('partials/review-tab') %>
+    <%- include('partials/grades-tab') %>
   </div>
 
   <script src="/shared/i18n.js"></script>
   <script src="/shared/vendor/socket.io.min.js"></script>
+  <script src="/shared/vendor/sweetalert2.all.min.js"></script>
+  <script src="/shared/ui.js"></script>
   <script src="/admin-assets/js/app.js"></script>
   <script src="/admin-assets/js/sessions.js"></script>
   <script src="/admin-assets/js/questions.js"></script>
   <script src="/admin-assets/js/review.js"></script>
+  <script src="/admin-assets/js/grades.js"></script>
   <script src="/admin-assets/js/socket.js"></script>
 </body>
 </html>
