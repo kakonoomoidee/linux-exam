@@ -1,4 +1,10 @@
 const express = require('express');
+// Express 4 does NOT forward a rejected promise from an async route handler to
+// the error middleware — an un-try/catch'd `await` that throws would otherwise
+// leave the request hanging forever with no response. This shim patches the
+// router so every async rejection reaches the `app.use((err,...))` handler
+// below. Must be required before any router is created.
+require('express-async-errors');
 const path = require('path');
 
 // UI strings, injected into each page as window.__I18N__ (see views/*/index.ejs).

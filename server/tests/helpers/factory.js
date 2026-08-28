@@ -1,0 +1,110 @@
+/**
+ * Row factories with sensible defaults so each test only spells out what it
+ * actually cares about. Everything returns the created DB row; user factories
+ * also attach a signed `token`.
+ */
+const crypto = require('node:crypto');
+const db = require('../../src/db/connection');
+const { hash } = require('../../src/lib/password');
+const { signToken } = require('../../src/middleware/auth');
+
+async function createAdmin({ nim = 'admin', password = 'admin123', name = 'Administrator' } = {}) {
+  const password_hash = await hash(password);
+  const row = await db.run(
+    `INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, 'admin', $3) RETURNING *`,
+    [nim, name, password_hash]
+  );
+  return { ...row, password, token: signToken(row) };
+}
+
+async function createStudent({ nim = '20220140055', name = 'Budi Santoso' } = {}) {
+  const row = await db.run(
+    `INSERT INTO users (nim, name, role) VALUES ($1, $2, 'student') RETURNING *`,
+    [nim, name]
+  );
+  return { ...row, token: signToken(row) };
+}
+
+async function createSession({ name = 'Test Session', duration_minutes = 10, status = 'pending', started_at } = {}) {
+  return db.run(
+    `INSERT INTO sessions (name, duration_minutes, status, started_at)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [name, duration_minutes, status, started_at || null]
+  );
+}
+
+async function createParticipant({
+  session,
+  user,
+  variant_index = 5,
+  container_status = 'active',
+  container_id,
+  session_token,
+  started_at,
+  ends_at,
+  active_question_id = null,
+  violation_count = 0,
+  lock_code = null,
+  locked_at = null,
+} = {}) {
+  const token = session_token || crypto.randomUUID();
+  const endsAt = ends_at === undefined ? new Date(Date.now() + 10 * 60000).toISOString() : ends_at;
+  return db.run(
+    `INSERT INTO session_participants
+       (session_id, user_id, variant_index, container_id, container_status, session_token,
+        started_at, ends_at, active_question_id, violation_count, lock_code, locked_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+    [
+      session.id,
+      user.id,
+      variant_index,
+      container_id === undefined ? `mock-container-${user.id}` : container_id,
+      container_status,
+      token,
+      started_at || new Date().toISOString(),
+      endsAt,
+      active_question_id,
+      violation_count,
+      lock_code,
+      locked_at,
+    ]
+  );
+}
+
+async function createQuestion({
+  variant_index = 5,
+  order_index = 1,
+  story_text = 'Do a thing',
+  point = 1,
+  check_type = 'command_match',
+  accepted_patterns = ['^ls$'],
+  state_checker_script = null,
+} = {}) {
+  const Question = require('../../src/models/Question');
+  return Question.create({
+    variant_index,
+    order_index,
+    story_text,
+    point,
+    check_type,
+    accepted_patterns,
+    state_checker_script,
+  });
+}
+
+/** One admin + one student + one pending session, the common starting point. */
+async function scaffold() {
+  const admin = await createAdmin();
+  const student = await createStudent();
+  const session = await createSession();
+  return { admin, student, session };
+}
+
+module.exports = {
+  createAdmin,
+  createStudent,
+  createSession,
+  createParticipant,
+  createQuestion,
+  scaffold,
+};

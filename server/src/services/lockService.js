@@ -85,4 +85,11 @@ async function forceUnlock(participantId) {
   attempts.delete(participantId);
 }
 
-module.exports = { isLocked, recordViolation, rehydrate, attemptUnlock, forceUnlock };
+// test-only: clear the in-memory lock + throttle maps between test cases
+// (the DB is truncated per test, but this module's state is not).
+function _resetState() {
+  lockedIds.clear();
+  attempts.clear();
+}
+
+module.exports = { isLocked, recordViolation, rehydrate, attemptUnlock, forceUnlock, _resetState };
