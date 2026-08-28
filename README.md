@@ -120,6 +120,43 @@ npm run dev                 # http://localhost:3000  (nodemon)
 doang. Kalau udah punya PostgreSQL sendiri, skip `docker compose up -d db`
 dan set `DB_HOST` / `DB_PORT` / kredensial di `.env` ke DB itu.
 
+## Test — `npm test`
+
+Jest (`server/`). Butuh PostgreSQL yang sama kayak dev (`docker compose up -d db`).
+Test pakai database terpisah `tekser_test` — **dibuat otomatis** kalau belum
+ada (lihat `tests/helpers/global-setup.js`), skema di-apply sekali di awal,
+tiap test file nge-`TRUNCATE` semua tabel di `beforeEach`. Override lokasi DB
+lewat `DATABASE_URL` (harus berakhiran `_test`, kalau nggak test-nya nolak
+jalan).
+
+```bash
+cd server
+npm test                  # semua suite
+npm run test:coverage     # + tabel coverage
+npx jest tests/unit       # subset
+```
+
+Struktur: `tests/unit/` (evaluator, lockService, User, importService,
+containerDrivers) + `tests/integration/` (auth, adminSessions, adminQuestions,
+cmd-log webhook, submit flow, review/grades, lockdown sockets). Helper di
+`tests/helpers/` — `db.js` (`useTestDb()`), `factory.js` (row builders),
+`server.js` (app + Socket.IO di port ephemeral), `sioclient.js` (klien
+Socket.IO minimal di atas `ws`, karena repo nggak punya `socket.io-client`).
+
+**Coverage saat ini** (`npm run test:coverage`, 142 test / 13 suite):
+
+| | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|
+| All files | 84.6% | 73.8% | 77.5% | 87.5% |
+
+Yang sengaja rendah: `containerDrivers.js` (25% — `DockerDriver` butuh daemon
+Docker beneran; `MockDriver` 100%), `config/index.js` branch (cuma `||`
+fallback env var), sebagian route `adminReview.js` (review board per-soal +
+bulk-accept belum ditest). Baseline buat dipantau, bukan target 100%.
+
+Lihat `tests/FINDINGS.md` — bug beneran yang ketemu pas nulis test (belum
+difix, test-nya assert behavior sekarang + ditandai `FINDING:`).
+
 ## Bahasa (i18n)
 
 UI dua bahasa: **Indonesia** & **Inggris**. Switcher `ID / EN` ada di pojok
