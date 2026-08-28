@@ -113,5 +113,18 @@
   "admin.command": "Command",
   "admin.exit": "Exit",
   "admin.question": "Question",
-  "admin.noCommandsSession": "No commands recorded for this session yet."
+  "admin.noCommandsSession": "No commands recorded for this session yet.",
+  "student.lockedTitle": "Exam Locked",
+  "student.lockedBody": "The exam is locked because you left the tab. Ask your instructor for the code.",
+  "student.unlockCodePlaceholder": "6-digit code",
+  "student.unlockBtn": "Unlock",
+  "student.unlocked": "Exam unlocked. Carry on.",
+  "student.unlockWrong": "Wrong code.",
+  "student.unlockThrottled": "Too many attempts. Wait a moment and try again.",
+  "admin.lockStatus": "Lock / Violations",
+  "admin.locked": "LOCKED",
+  "admin.forceUnlock": "Force Unlock",
+  "admin.violationsN": "{n} violation(s)",
+  "admin.violationAlert": "{who} left the exam tab (violation #{n}). Unlock code: {code}",
+  "admin.unlockedToast": "{nim} has been unlocked."
 }

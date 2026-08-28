@@ -3,9 +3,25 @@ const { requireAdmin } = require('../middleware/auth');
 const Session = require('../models/Session');
 const Question = require('../models/Question');
 const { Submission, CommandLog } = require('../models/Submission');
+const lockService = require('../services/lockService');
 
 const router = express.Router();
 router.use(requireAdmin);
+
+/** Anti-cheat: assistant unlocks a locked participant without them typing the
+ * code (false positive, or just faster than reading it out). */
+router.post('/participants/:participantId/force-unlock', async (req, res) => {
+  const participant = await Session.getParticipant(req.params.participantId);
+  if (!participant) return res.status(404).json({ error: 'Peserta tidak ditemukan' });
+
+  await lockService.forceUnlock(participant.id);
+  const io = require('../sockets').getIo();
+  if (io) {
+    io.to(`participant:${participant.session_token}`).emit('exam:unlocked', {});
+    io.to('admin-dashboard').emit('admin:unlocked', { participantId: participant.id, nim: participant.nim });
+  }
+  res.json({ ok: true });
+});
 
 /** Full review board for one session x one question: every participant's
  * auto result + their full command log for that question, ready to override. */

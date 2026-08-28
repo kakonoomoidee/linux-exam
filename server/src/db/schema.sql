@@ -76,6 +76,12 @@ CREATE TABLE IF NOT EXISTS submissions (
   UNIQUE(participant_id, question_id)
 );
 
+-- Anti-cheat: lockdown-on-tab-switch. Additive and idempotent — safe to run
+-- on an existing production database with data (schema.sql runs on every boot).
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS lock_code       TEXT;
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS locked_at       TIMESTAMPTZ;
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS violation_count INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS idx_cmdlog_participant ON command_logs(participant_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_participant ON submissions(participant_id);
 CREATE INDEX IF NOT EXISTS idx_participants_session ON session_participants(session_id);

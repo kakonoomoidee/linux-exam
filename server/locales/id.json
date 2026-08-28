@@ -91,5 +91,18 @@
   "admin.command": "Command",
   "admin.exit": "Exit",
   "admin.question": "Soal",
-  "admin.noCommandsSession": "Belum ada command yang tercatat di sesi ini."
+  "admin.noCommandsSession": "Belum ada command yang tercatat di sesi ini.",
+  "student.lockedTitle": "Ujian Dikunci",
+  "student.lockedBody": "Ujian dikunci karena kamu meninggalkan tab. Minta kode dari asisten dosen.",
+  "student.unlockCodePlaceholder": "Kode 6 digit",
+  "student.unlockBtn": "Buka Kunci",
+  "student.unlocked": "Ujian dibuka kembali. Lanjutkan mengerjakan.",
+  "student.unlockWrong": "Kode salah.",
+  "student.unlockThrottled": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+  "admin.lockStatus": "Kunci / Pelanggaran",
+  "admin.locked": "TERKUNCI",
+  "admin.forceUnlock": "Buka Paksa",
+  "admin.violationsN": "{n}x pelanggaran",
+  "admin.violationAlert": "{who} meninggalkan tab ujian (pelanggaran ke-{n}). Kode buka kunci: {code}",
+  "admin.unlockedToast": "{nim} sudah dibuka kunci."
 }
