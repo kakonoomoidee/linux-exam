@@ -21,6 +21,7 @@ __tekser_log_cmd() {
     -H "Content-Type: application/json" \
     -d "{\"session_token\":\"$SESSION_TOKEN\",\"cmd\":$escaped_cmd,\"exit_code\":$exit_code}" \
     >/dev/null 2>&1 &
+  disown $! 2>/dev/null   # drop from job table so bash doesn't print "[1]+ Done ..."
 }
 
 export HISTCONTROL=ignoredups
