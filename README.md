@@ -266,6 +266,16 @@ npm run import-questions -- /path/ke/soal.xlsx
 - **Auto-grade adalah starting point, bukan nilai final** — `final_score`
   di tabel `submissions` nullable; kalau belum di-review manual, sistem
   fallback ke `auto_score` buat total nilai.
+- **Lockdown on tab-switch itu deteksi + deterrent + audit trail, BUKAN
+  lockdown OS-level.** Client dengerin `visibilitychange` + `window.blur`,
+  langsung nutup terminal & soal pas mahasiswa pindah tab / alt-tab, lalu
+  lapor `student:violation`. Server generate kode unlock 6 digit baru tiap
+  pelanggaran (kode lama otomatis invalid), naikin `violation_count`, dan
+  nolak `terminal:input` selama status locked (gak cuma andelin disable di
+  client). Timer server-side **tetep jalan** selama locked — pindah tab gak
+  nambah waktu. Batas: browser gak bisa nyegah app-switching secara fisik,
+  dan mahasiswa yang niat masih bisa pakai device kedua. Asisten lihat kode
+  real-time di tab "Sesi" dan bisa "Buka Paksa".
 
 ## Yang masih perlu disesuaikan sebelum dipakai ujian beneran
 

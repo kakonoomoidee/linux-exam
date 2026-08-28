@@ -73,6 +73,24 @@ const Session = {
     );
   },
 
+  // Anti-cheat lock: new unlock code on every violation (old code becomes
+  // invalid), violation_count bumped atomically in the same statement.
+  recordViolation(participantId, code) {
+    return db.run(
+      `UPDATE session_participants
+       SET lock_code = $1, locked_at = now(), violation_count = violation_count + 1
+       WHERE id = $2 RETURNING *`,
+      [code, participantId]
+    );
+  },
+
+  clearLock(participantId) {
+    return db.run(
+      'UPDATE session_participants SET lock_code = NULL, locked_at = NULL WHERE id = $1 RETURNING *',
+      [participantId]
+    );
+  },
+
   async updateParticipant(participantId, fields) {
     const keys = Object.keys(fields);
     if (keys.length === 0) return Session.getParticipant(participantId);

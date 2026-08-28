@@ -1,4 +1,5 @@
 const containerService = require('../services/containerService');
+const lockService = require('../services/lockService');
 
 /**
  * Bridges one socket connection's terminal input/output to the participant's
@@ -25,6 +26,9 @@ function registerTerminalHandlers(io, socket, participant) {
   })();
 
   socket.on('terminal:input', (data) => {
+    // defense in depth: the client also disables the terminal on lock, but a
+    // locked student must not be able to type by emitting straight from devtools.
+    if (lockService.isLocked(participant.id)) return;
     if (containerStream) containerStream.write(data);
   });
 

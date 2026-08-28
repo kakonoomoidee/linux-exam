@@ -120,23 +120,43 @@ async function loadParticipants(sessionId) {
     <table class="data-table">
       <thead>
         <tr>
-          <th>${t('common.nim')}</th><th>${t('common.name')}</th><th>${t('common.variant')}</th><th>${t('admin.containerStatus')}</th>
+          <th>${t('common.nim')}</th><th>${t('common.name')}</th><th>${t('common.variant')}</th>
+          <th>${t('admin.containerStatus')}</th><th>${t('admin.lockStatus')}</th>
         </tr>
       </thead>
       <tbody>
-        ${participants
-          .map(
-            (p) => `<tr>
-              <td class="font-mono">${p.nim}</td><td>${p.name || '-'}</td><td>${p.variant_index}</td>
-              <td><span class="badge ${p.container_status === 'running' ? 'badge-green' : 'badge-gray'}">${p.container_status}</span></td>
-            </tr>`
-          )
-          .join('')}
+        ${participants.map(renderParticipantRow).join('')}
       </tbody>
     </table>`;
+
+  list.querySelectorAll('.force-unlock-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await apiFetch(`/admin/review/participants/${btn.dataset.id}/force-unlock`, { method: 'POST' });
+      loadParticipants(sessionId);
+    });
+  });
+}
+
+function renderParticipantRow(p) {
+  const locked = Boolean(p.locked_at);
+  const lockCell = locked
+    ? `<span class="badge badge-amber">🔒 ${t('admin.locked')}</span>
+       <span class="font-mono text-lg font-bold tracking-[0.2em] mx-2">${p.lock_code || '------'}</span>
+       <span class="text-xs text-[color:var(--text-faint)]">${t('admin.violationsN', { n: p.violation_count || 0 })}</span>
+       <button class="force-unlock-btn btn btn-ghost btn-sm ml-2" data-id="${p.id}">${t('admin.forceUnlock')}</button>`
+    : p.violation_count
+    ? `<span class="text-xs text-[color:var(--text-faint)]">${t('admin.violationsN', { n: p.violation_count })}</span>`
+    : '<span class="text-[color:var(--text-faint)]">—</span>';
+  return `<tr>
+    <td class="font-mono">${p.nim}</td><td>${p.name || '-'}</td><td>${p.variant_index}</td>
+    <td><span class="badge ${p.container_status === 'running' ? 'badge-green' : 'badge-gray'}">${p.container_status}</span></td>
+    <td class="whitespace-nowrap">${lockCell}</td>
+  </tr>`;
 }
 
 window.loadSessions = loadSessions;
+window.loadParticipants = loadParticipants;
+window.getOpenSessionId = () => currentSessionId;
 
 window.addEventListener('i18n:changed', () => {
   if (!document.getElementById('dashboard-screen').classList.contains('hidden')) {
