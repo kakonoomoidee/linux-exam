@@ -106,5 +106,12 @@
   "admin.status.provisioning": "provisioning",
   "admin.status.destroyed": "done",
   "student.submitting": "Submitting your answers and ending the session...",
-  "student.submitTakingLong": "Ending the session is taking longer than usual. Please wait a bit more — contact your instructor if it doesn't finish."
+  "student.submitTakingLong": "Ending the session is taking longer than usual. Please wait a bit more — contact your instructor if it doesn't finish.",
+  "admin.sessionTranscript": "Session transcript",
+  "admin.allParticipants": "All participants",
+  "admin.time": "Time",
+  "admin.command": "Command",
+  "admin.exit": "Exit",
+  "admin.question": "Question",
+  "admin.noCommandsSession": "No commands recorded for this session yet."
 }

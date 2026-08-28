@@ -9,7 +9,8 @@
     "dev": "nodemon src/server.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/scripts/seedSample.js",
-    "import-questions": "node src/scripts/importQuestions.js"
+    "import-questions": "node src/scripts/importQuestions.js",
+    "cleanup": "node src/scripts/cleanupContainers.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

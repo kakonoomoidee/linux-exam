@@ -25,6 +25,30 @@ const CommandLog = {
       [participantId]
     );
   },
+
+  /**
+   * Every command from every participant in a session, time-ordered and
+   * interleaved, annotated with which question it was attributed to and
+   * whether it's the command that actually scored that question. Powers the
+   * admin "session transcript" view.
+   */
+  listForSession(sessionId) {
+    return db.all(
+      `SELECT cl.id, cl.raw_command, cl.exit_code, cl.created_at,
+              cl.question_id, q.order_index AS question_order,
+              cl.participant_id, u.nim, u.name,
+              (sub.matched_command_log_id = cl.id) AS is_match
+       FROM command_logs cl
+       JOIN session_participants sp ON sp.id = cl.participant_id
+       JOIN users u ON u.id = sp.user_id
+       LEFT JOIN questions q ON q.id = cl.question_id
+       LEFT JOIN submissions sub
+         ON sub.participant_id = cl.participant_id AND sub.question_id = cl.question_id
+       WHERE sp.session_id = $1
+       ORDER BY cl.created_at ASC, cl.id ASC`,
+      [sessionId]
+    );
+  },
 };
 
 const Submission = {
