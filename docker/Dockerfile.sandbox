@@ -1,0 +1,24 @@
+# The per-student exam environment. Keep this in sync with whatever the
+# 8 pertemuan actually covered — add packages here, not ad-hoc per question.
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash coreutils util-linux findutils grep sed gawk \
+    net-tools iproute2 nano vim-tiny curl ca-certificates \
+    passwd sudo cron less tree \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash mahasiswa
+
+# sample exam fixtures — replace/extend per soal cerita content
+RUN echo "20220140055,Budi Santoso,Teknologi Informasi\n20220140056,Siti Aminah,Teknologi Informasi" \
+    > /home/mahasiswa/mahasiswa.txt \
+    && chown mahasiswa:mahasiswa /home/mahasiswa/mahasiswa.txt
+
+COPY bashrc-hook.sh /etc/profile.d/tekser-hook.sh
+RUN chmod +x /etc/profile.d/tekser-hook.sh
+
+USER mahasiswa
+WORKDIR /home/mahasiswa
+ENV HOME=/home/mahasiswa
+CMD ["/bin/bash", "-l"]

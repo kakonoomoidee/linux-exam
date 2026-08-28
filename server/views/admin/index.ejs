@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="admin.title">Admin - Tekser Exam</title>
+  <script>window.__I18N__ = <%- localesScript %>;</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/shared/theme.css" />
+</head>
+<body class="min-h-screen">
+
+  <select id="lang-switcher" aria-label="Language">
+    <option value="id">ID</option>
+    <option value="en">EN</option>
+  </select>
+
+  <!-- login -->
+  <div id="login-screen" class="screen min-h-screen flex items-center justify-center p-6">
+    <div class="card w-full max-w-sm text-center">
+      <div class="brand-mark mx-auto mb-4">&gt;_</div>
+      <h1 class="text-lg font-bold mb-1" data-i18n="admin.loginHeading">Admin Login</h1>
+      <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="admin.loginSubtitle">
+        Masuk untuk mengelola sesi ujian.
+      </p>
+      <label class="label text-left" for="admin-nim" data-i18n="common.nim">NIM</label>
+      <input id="admin-nim" class="field mb-3" data-i18n-ph="admin.nimPlaceholder" placeholder="NIM Admin" />
+      <label class="label text-left" for="admin-password" data-i18n="common.password">Password</label>
+      <input id="admin-password" type="password" class="field mb-4"
+        data-i18n-ph="common.password" placeholder="Password" />
+      <button id="admin-login-btn" class="btn btn-primary btn-block" data-i18n="common.login">Masuk</button>
+      <p id="admin-login-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+    </div>
+  </div>
+
+  <!-- dashboard -->
+  <div id="dashboard-screen" class="screen hidden min-h-screen">
+    <nav class="sticky top-0 z-20 bg-[color:var(--surface)] px-6 py-3 border-b border-[color:var(--border)] flex flex-wrap gap-3 justify-between items-center">
+      <div class="flex items-center gap-3">
+        <div class="brand-mark">&gt;_</div>
+        <h2 class="text-base font-bold" data-i18n="admin.dashboardHeading">Tekser Exam Admin</h2>
+      </div>
+      <div class="tabs flex gap-1 bg-[color:var(--bg)] p-1 rounded-[var(--radius-sm)] border border-[color:var(--border)]">
+        <button class="tab-btn active" data-tab="sessions" data-i18n="admin.tabSessions">Sesi</button>
+        <button class="tab-btn" data-tab="questions" data-i18n="admin.tabQuestions">Bank Soal</button>
+        <button class="tab-btn" data-tab="review" data-i18n="admin.tabReview">Review Nilai</button>
+      </div>
+    </nav>
+
+    <%- include('partials/sessions-tab') %>
+    <%- include('partials/questions-tab') %>
+    <%- include('partials/review-tab') %>
+  </div>
+
+  <script src="/shared/i18n.js"></script>
+  <script src="/shared/vendor/socket.io.min.js"></script>
+  <script src="/admin-assets/js/app.js"></script>
+  <script src="/admin-assets/js/sessions.js"></script>
+  <script src="/admin-assets/js/questions.js"></script>
+  <script src="/admin-assets/js/review.js"></script>
+  <script src="/admin-assets/js/socket.js"></script>
+</body>
+</html>

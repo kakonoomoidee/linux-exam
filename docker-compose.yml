@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-tekser}
+      POSTGRES_USER: ${DB_USER:-tekser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tekser}
+    # Host port is customizable via .env (DB_PORT) so it never clashes with a
+    # PostgreSQL already running on the host. Inside the compose network the
+    # app always reaches it on the fixed internal 5432.
+    ports:
+      - "${DB_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-tekser} -d ${DB_NAME:-tekser}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      PORT: ${PORT:-3000}
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-long-random-string}
+      DATABASE_URL: postgres://${DB_USER:-tekser}:${DB_PASSWORD:-tekser}@db:5432/${DB_NAME:-tekser}
+      CONTAINER_DRIVER: ${CONTAINER_DRIVER:-mock}
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-tekser-sandbox:latest}
+      CONTAINER_MEMORY_MB: ${CONTAINER_MEMORY_MB:-128}
+      CONTAINER_CPUS: ${CONTAINER_CPUS:-0.5}
+      CONTAINER_PIDS_LIMIT: ${CONTAINER_PIDS_LIMIT:-64}
+      CMD_LOG_CALLBACK_URL: ${CMD_LOG_CALLBACK_URL:-http://host.docker.internal:3000/api/cmd-log}
+      DEFAULT_SESSION_DURATION_MINUTES: ${DEFAULT_SESSION_DURATION_MINUTES:-10}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    depends_on:
+      db:
+        condition: service_healthy
+    # CONTAINER_DRIVER=docker spawns sibling sandbox containers on the host
+    # daemon; needs the socket and a route back to the app for command logs.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # dockerode talks to the bind-mounted socket (root:docker, mode 660). The
+    # app image has no USER line so it already runs as root — explicit here so
+    # a future base-image change can't silently break socket access. If you add
+    # a non-root USER, drop this and instead: group_add: ["<host docker gid>"].
+    user: root
+
+volumes:
+  pgdata:

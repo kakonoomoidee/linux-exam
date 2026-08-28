@@ -1,0 +1,300 @@
+/* Shared visual system for the Linux Practical Exam app (student + admin).
+   Loaded right after the Tailwind CDN on both index.ejs pages.
+   Design tokens + a handful of component classes; layout stays Tailwind
+   utilities. No build step — edit and reload. */
+
+:root {
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #0a0e17;
+  --surface: #121826;
+  --surface-2: #1a2233;
+  --border: #29344d;
+  --border-strong: #3d4a6b;
+
+  --text: #e8ecf4;
+  --text-muted: #9aa7bd;
+  --text-faint: #6b7891;
+
+  --accent: #6366f1;
+  --accent-hover: #7c7ff2;
+  --accent-weak: rgba(99, 102, 241, 0.14);
+
+  --success: #22c55e;
+  --success-weak: rgba(34, 197, 94, 0.13);
+  --warn: #fbbf24;
+  --danger: #f87171;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6);
+}
+
+html { background: var(--bg); }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--accent); color: #fff; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ---- brand mark ---- */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 10px;
+  background: linear-gradient(150deg, var(--accent), #4338ca);
+  color: #fff;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: -0.03em;
+  flex: none;
+  box-shadow: 0 6px 18px -8px var(--accent);
+}
+
+/* ---- surfaces ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.35rem;
+  box-shadow: var(--shadow);
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+.card-title .badge { font-weight: 600; }
+
+/* ---- forms ---- */
+.label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 0.62rem 0.78rem;
+  font-size: 0.9rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field::placeholder { color: var(--text-faint); }
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+textarea.field { resize: vertical; }
+select.field { cursor: pointer; }
+
+/* ---- buttons ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.65rem 1.05rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, filter 0.15s, transform 0.05s, opacity 0.15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-block { width: 100%; }
+.btn-sm { padding: 0.42rem 0.75rem; font-size: 0.8rem; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-success { background: var(--success); color: #052e16; }
+.btn-success:hover { filter: brightness(1.08); }
+.btn-ghost {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--border); }
+
+/* ---- badges ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.badge-green { background: var(--success-weak); color: #4ade80; border-color: transparent; }
+.badge-amber { background: rgba(245, 158, 11, 0.15); color: var(--warn); border-color: transparent; }
+.badge-gray  { background: var(--surface-2); color: var(--text-faint); border-color: transparent; }
+
+/* ---- data tables ---- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.data-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.data-table tbody td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--surface-2); }
+
+/* ---- admin tab segmented control (replaces old inline <style> injection) ---- */
+.tab-btn {
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab-btn:hover { color: var(--text); background: var(--surface-2); }
+.tab-btn.active { background: var(--accent); color: #fff; }
+
+/* ---- language switcher: parked out of every header's way ---- */
+#lang-switcher {
+  position: fixed;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  z-index: 50;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.4rem 1.7rem 0.4rem 0.85rem;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+/* ---- exam: question cards ---- */
+.q-card {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 0.9rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+.q-card.solved {
+  border-left-color: var(--success);
+  background: var(--success-weak);
+}
+
+/* ---- exam: terminal frame ---- */
+.terminal-frame {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem;
+  overflow: hidden;
+}
+.terminal-frame .xterm { height: 100%; }
+
+/* ---- exam: timer ---- */
+#timer {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+#timer.warn { color: var(--warn); }
+#timer.low  { color: var(--danger); animation: pulse 1s ease-in-out infinite; }
+
+/* ---- toasts ---- */
+#toast-container { max-width: min(90vw, 22rem); }
+.toast {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--success);
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  box-shadow: var(--shadow);
+  animation: slidein 0.25s ease, fadeout 4s forwards;
+}
+
+/* ---- spinner ---- */
+.spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes slidein { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes fadeout { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

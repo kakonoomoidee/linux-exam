@@ -1,0 +1,16 @@
+<section id="tab-review" class="tab-content hidden max-w-5xl mx-auto p-6">
+  <div class="card">
+    <div class="card-title" data-i18n="admin.reviewHeading">Review Jawaban</div>
+    <div class="flex flex-wrap gap-2 items-center mb-4">
+      <select id="review-session-select" class="field w-auto min-w-[180px]"></select>
+      <select id="review-question-select" class="field w-auto flex-1 min-w-[240px]"></select>
+      <button id="review-load-btn" class="btn btn-primary btn-sm" data-i18n="admin.showBtn">Tampilkan</button>
+      <button id="review-bulk-accept-btn" class="btn btn-ghost btn-sm"
+        data-i18n="admin.bulkAccept">Terima Semua Auto-Grade</button>
+      <a id="export-csv-link" href="#" download
+        class="text-[color:var(--accent-hover)] hover:underline text-sm ml-auto"
+        data-i18n="admin.exportCsv">Export CSV Nilai</a>
+    </div>
+    <div id="review-table" class="overflow-x-auto"></div>
+  </div>
+</section>

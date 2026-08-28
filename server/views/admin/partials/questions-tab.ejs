@@ -1,0 +1,16 @@
+<section id="tab-questions" class="tab-content hidden max-w-4xl mx-auto p-6">
+  <div class="card">
+    <div class="card-title" data-i18n="admin.importHeading">Import Soal dari Excel</div>
+    <p class="text-[color:var(--text-muted)] text-sm mb-4 leading-relaxed" data-i18n="admin.importFormatHelp">
+      Format: 1 sheet per variant (0-9), kolom: order, story, point, check_type,
+      accepted_patterns (pisah "|"), state_checker
+    </p>
+    <input type="file" id="excel-file" accept=".xlsx,.xls"
+      class="field text-sm text-[color:var(--text-muted)] mb-4
+        file:mr-3 file:rounded-md file:border-0 file:bg-[color:var(--accent)]
+        file:px-3 file:py-1.5 file:text-white file:text-sm file:font-medium file:cursor-pointer" />
+    <button id="import-questions-btn" class="btn btn-primary btn-sm" data-i18n="admin.importBtn">Import</button>
+    <pre id="import-result"
+      class="mt-4 text-sm bg-[color:var(--bg)] border border-[color:var(--border)] p-3 rounded-[var(--radius-sm)] whitespace-pre-wrap empty:hidden"></pre>
+  </div>
+</section>

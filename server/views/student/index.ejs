@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="student.title">Ujian Praktikum Linux</title>
+  <script>window.__I18N__ = <%- localesScript %>;</script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/shared/vendor/xterm.min.css" />
+  <link rel="stylesheet" href="/shared/theme.css" />
+</head>
+<body class="min-h-screen">
+
+  <select id="lang-switcher" aria-label="Language">
+    <option value="id">ID</option>
+    <option value="en">EN</option>
+  </select>
+
+  <!-- login -->
+  <div id="login-screen" class="screen min-h-screen flex items-center justify-center p-6">
+    <div class="card w-full max-w-sm text-center">
+      <div class="brand-mark mx-auto mb-4">&gt;_</div>
+      <h1 class="text-lg font-bold" data-i18n="student.title">Ujian Praktikum Linux</h1>
+      <p class="text-sm text-[color:var(--text-faint)] mt-1 mb-6" data-i18n="student.loginSubtitle">
+        Masuk dengan NIM untuk memulai.
+      </p>
+      <label class="label text-left" for="nim-input" data-i18n="common.nim">NIM</label>
+      <input id="nim-input" class="field mb-4" data-i18n-ph="student.nimPlaceholder"
+        placeholder="Masukkan NIM" autocomplete="off" inputmode="numeric" />
+      <button id="login-btn" class="btn btn-primary btn-block" data-i18n="common.login">Masuk</button>
+      <p id="login-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+    </div>
+  </div>
+
+  <!-- waiting for the session to start -->
+  <div id="waiting-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
+    <div class="card max-w-sm text-center flex flex-col items-center gap-4">
+      <div class="spinner"></div>
+      <p class="text-[color:var(--text-muted)]" data-i18n="student.waiting">
+        Menunggu asisten dosen memulai sesi...
+      </p>
+    </div>
+  </div>
+
+  <!-- exam -->
+  <div id="exam-screen" class="screen hidden h-screen flex flex-col">
+    <header class="flex items-center justify-between gap-4 px-5 py-3 bg-[color:var(--surface)] border-b border-[color:var(--border)]">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="brand-mark">&gt;_</div>
+        <span id="student-name" class="font-medium truncate"></span>
+      </div>
+      <div class="text-center leading-none">
+        <div class="text-[10px] uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-1"
+          data-i18n="student.timeLeft">Sisa waktu</div>
+        <span id="timer" class="text-2xl font-bold">--:--</span>
+      </div>
+      <button id="submit-btn" class="btn btn-primary btn-sm" data-i18n="student.submitNow">Submit Sekarang</button>
+    </header>
+
+    <main class="flex flex-1 min-h-0 overflow-hidden">
+      <aside class="w-80 shrink-0 flex flex-col bg-[color:var(--surface)] border-r border-[color:var(--border)]">
+        <div class="px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--text-faint)] border-b border-[color:var(--border)]"
+          data-i18n="student.questionsHeading">Soal</div>
+        <div id="question-panel" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+      </aside>
+      <div class="flex-1 min-w-0 min-h-0 p-3 bg-[color:var(--bg)] flex">
+        <div id="terminal" class="terminal-frame flex-1"></div>
+      </div>
+    </main>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-2 z-10"
+      role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- finished -->
+  <div id="ended-screen" class="screen hidden min-h-screen flex flex-col items-center justify-center gap-5 p-6">
+    <h2 class="text-2xl font-bold" data-i18n="student.examOver">Waktu Habis / Ujian Selesai</h2>
+    <div id="final-results" class="card w-full max-w-md"></div>
+  </div>
+
+  <script src="/shared/i18n.js"></script>
+  <script src="/shared/vendor/xterm.min.js"></script>
+  <script src="/shared/vendor/xterm-addon-fit.min.js"></script>
+  <script src="/shared/vendor/socket.io.min.js"></script>
+  <script src="/exam-assets/js/app.js"></script>
+</body>
+</html>
