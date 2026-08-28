@@ -1,8 +1,12 @@
 const config = require('../config');
 
 /**
- * Real driver: spins up an isolated, resource-limited, network-restricted
- * container per participant from the pre-built sandbox image.
+ * Real driver: spins up an isolated, resource-limited container per
+ * participant from the pre-built sandbox image, on a dedicated Docker
+ * network (SANDBOX_NETWORK, `internal: true` in docker-compose.yml) that
+ * has no route to the internet but CAN reach the `app` service — that's
+ * what lets the container's shell hook call back to CMD_LOG_CALLBACK_URL
+ * for live command grading while still being cut off from the outside world.
  * The image's /etc/profile.d/tekser-hook.sh (see docker/) posts every
  * executed command back to CMD_LOG_CALLBACK_URL via the PROMPT_COMMAND hook.
  */
@@ -27,7 +31,11 @@ class DockerDriver {
         Memory: config.containerMemoryMb * 1024 * 1024,
         NanoCpus: Math.round(config.containerCpus * 1e9),
         PidsLimit: config.containerPidsLimit,
-        NetworkMode: 'none', // no internet access during the exam
+        // internal-only network: no internet, but can still reach `app`
+        // for grading callbacks (see docker-compose.yml). NOT 'none' —
+        // that would also block the callback the whole grading pipeline
+        // depends on.
+        NetworkMode: config.sandboxNetwork,
         AutoRemove: false,
       },
     });

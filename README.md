@@ -148,19 +148,34 @@ cd docker
 docker build -t tekser-sandbox:latest -f Dockerfile.sandbox .
 ```
 
+Kalau pakai `docker compose up --build`, ini kejadian otomatis lewat service
+`sandbox-image` — build manual di atas cuma perlu kalau lu jalanin
+`CONTAINER_DRIVER=docker` di luar compose.
+
 Edit `Dockerfile.sandbox` buat nambah package yang dipelajarin di 8
 pertemuan (misal `net-tools`, `cron`, dll — beberapa udah ada, tambahin
 sesuai silabus PAW/PDW). Ganti isi `mahasiswa.txt` di situ juga sesuai
 konten soal cerita yang sebenarnya.
 
-**Penting soal `CMD_LOG_CALLBACK_URL`:** ini alamat yang dipanggil container
-buat lapor command. Di Docker Desktop (Mac/Windows) `host.docker.internal`
-udah otomatis kerja. Di Linux, biasanya perlu:
-```bash
-# tambahin ke docker run / dockerode HostConfig kalau host.docker.internal gak resolve:
---add-host=host.docker.internal:host-gateway
-```
-(Sudah ada tempatnya di `containerDrivers.js` kalau perlu disesuaikan.)
+**Soal jaringan sandbox — kenapa bukan `NetworkMode: none`:** container
+mahasiswa butuh lapor tiap command yang dijalankan balik ke server (buat
+grading real-time, termasuk command read-only kayak `cat` yang gak
+ninggalin jejak di filesystem) — itu lewat `curl` di dalam container ke
+`CMD_LOG_CALLBACK_URL`. Tapi container juga harus **gak boleh akses
+internet** pas ujian. Dua kebutuhan ini ditangani dengan network Docker
+khusus, `tekser-sandbox-net` (didefinisikan di `docker-compose.yml`,
+`internal: true`) — network ini gak ada rute ke internet sama sekali, tapi
+container yang ada di situ tetap bisa saling nyambung, jadi sandbox
+mahasiswa bisa manggil `app` (nama service, resolve otomatis lewat DNS
+compose) tanpa bisa browsing keluar. Service `app` join network ini juga
+(lihat `docker-compose.yml`), dan `CMD_LOG_CALLBACK_URL` default-nya
+`http://app:3000/api/cmd-log`.
+
+Kalau `CONTAINER_DRIVER=docker` dijalankan **di luar** compose (bukan lewat
+`docker compose up`), network `tekser-sandbox-net` itu gak otomatis ada —
+harus dibikin manual dulu (`docker network create --internal
+tekser-sandbox-net`) dan `app`-nya sendiri juga harus join network yang
+sama biar bisa dipanggil balik.
 
 ## Import soal dari Excel
 

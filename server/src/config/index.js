@@ -18,10 +18,17 @@ module.exports = {
 
   containerDriver: process.env.CONTAINER_DRIVER || 'mock', // 'docker' | 'mock'
   sandboxImage: process.env.SANDBOX_IMAGE || 'tekser-sandbox:latest',
+  // Dedicated internal-only Docker network sandbox containers join — no
+  // route to the internet, but can still reach the `app` service by name
+  // for command-log callbacks (see docker-compose.yml `networks:`).
+  sandboxNetwork: process.env.SANDBOX_NETWORK || 'tekser-sandbox-net',
   containerMemoryMb: parseInt(process.env.CONTAINER_MEMORY_MB || '128', 10),
   containerCpus: parseFloat(process.env.CONTAINER_CPUS || '0.5'),
   containerPidsLimit: parseInt(process.env.CONTAINER_PIDS_LIMIT || '64', 10),
-  cmdLogCallbackUrl: process.env.CMD_LOG_CALLBACK_URL || 'http://host.docker.internal:3000/api/cmd-log',
+  // Default assumes docker-compose usage, where sandbox containers reach the
+  // app by its compose service name. Only relevant if CMD_LOG_CALLBACK_URL
+  // isn't set explicitly (compose always sets it — see docker-compose.yml).
+  cmdLogCallbackUrl: process.env.CMD_LOG_CALLBACK_URL || 'http://app:3000/api/cmd-log',
 
   defaultSessionDurationMinutes: parseInt(process.env.DEFAULT_SESSION_DURATION_MINUTES || '10', 10),
 

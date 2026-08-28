@@ -40,10 +40,13 @@ services:
       DATABASE_URL: postgres://${DB_USER:-tekser}:${DB_PASSWORD:-tekser}@db:5432/${DB_NAME:-tekser}
       CONTAINER_DRIVER: ${CONTAINER_DRIVER:-mock}
       SANDBOX_IMAGE: ${SANDBOX_IMAGE:-tekser-sandbox:latest}
+      SANDBOX_NETWORK: ${SANDBOX_NETWORK:-tekser-sandbox-net}
       CONTAINER_MEMORY_MB: ${CONTAINER_MEMORY_MB:-128}
       CONTAINER_CPUS: ${CONTAINER_CPUS:-0.5}
       CONTAINER_PIDS_LIMIT: ${CONTAINER_PIDS_LIMIT:-64}
-      CMD_LOG_CALLBACK_URL: ${CMD_LOG_CALLBACK_URL:-http://host.docker.internal:3000/api/cmd-log}
+      # Sandbox containers reach the app by its compose service name over the
+      # dedicated internal network below — no host.docker.internal needed.
+      CMD_LOG_CALLBACK_URL: ${CMD_LOG_CALLBACK_URL:-http://app:3000/api/cmd-log}
       DEFAULT_SESSION_DURATION_MINUTES: ${DEFAULT_SESSION_DURATION_MINUTES:-10}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
@@ -55,11 +58,13 @@ services:
       sandbox-image:
         condition: service_completed_successfully
     # CONTAINER_DRIVER=docker spawns sibling sandbox containers on the host
-    # daemon; needs the socket and a route back to the app for command logs.
+    # daemon; needs the socket to create/exec/destroy them, and must sit on
+    # tekser-sandbox-net (below) so those containers can call back to it.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - default            # reaches `db` (compose's implicit network)
+      - tekser-sandbox-net  # reachable by every spawned sandbox container as "app"
     # dockerode talks to the bind-mounted socket (root:docker, mode 660). The
     # app image has no USER line so it already runs as root — explicit here so
     # a future base-image change can't silently break socket access. If you add
@@ -68,3 +73,16 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  # Sandbox (student) containers join this network instead of running with
+  # no network at all. `internal: true` means Docker gives it no route to
+  # the outside world — students still can't reach the internet — but
+  # containers on it CAN resolve and reach each other, so the sandbox's
+  # command-log webhook calls to the `app` service work. This replaces the
+  # old NetworkMode: 'none', which blocked internet access AND the callback
+  # the whole grading pipeline depends on (see containerDrivers.js).
+  tekser-sandbox-net:
+    name: tekser-sandbox-net
+    driver: bridge
+    internal: true
