@@ -42,7 +42,8 @@ async function login() {
 
     token = data.token;
     localStorage.setItem('tekser_token', token);
-    document.getElementById('student-name').textContent = data.user.name || data.user.nim;
+    localStorage.setItem('tekser_user', JSON.stringify(data.user || {}));
+    setIdentity(data.user);
     checkActiveParticipant();
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('student.loginFailed');
@@ -84,6 +85,31 @@ function startExamUi(data) {
   step('startTimer', () => startTimer(data.remainingMs));
 }
 
+/** Populate the exam-header identity (name + kelas + avatar). */
+function setIdentity(user) {
+  user = user || {};
+  const name = user.name || user.nim || '';
+  document.getElementById('student-name').textContent = name;
+  const kelasEl = document.getElementById('student-kelas');
+  kelasEl.textContent = user.kelas || '';
+  kelasEl.hidden = !user.kelas;
+  const av = document.getElementById('student-avatar');
+  if (av && window.ui) {
+    const a = window.ui.avatar(name || '?');
+    av.textContent = a.initials;
+    av.style.background = a.bg;
+  }
+}
+
+/** Pick the question text for the current UI language, falling back to Indonesian. */
+function pickStory(q) {
+  const en = q.story_text_en || q.story_text_id || q.story_text;
+  const id = q.story_text_id || q.story_text;
+  return window.i18n.getLang() === 'en' ? en || id : id;
+}
+
+const LEVEL_TONE = { easy: 'green', medium: 'amber', hard: 'red' };
+
 function renderQuestions(questions, submissions) {
   const solvedIds = new Set(
     submissions.filter((s) => s.auto_result === 'pass').map((s) => s.question_id)
@@ -93,11 +119,14 @@ function renderQuestions(questions, submissions) {
     .map(
       (q) => `
       <div class="q-card ${solvedIds.has(q.id) ? 'solved' : ''}" id="q-${q.id}">
-        <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center justify-between gap-2 mb-1.5">
           <span class="badge">${t('common.questionN', { n: q.order_index })}</span>
-          <span class="text-xs text-[color:var(--text-faint)]">${t('common.points', { n: q.point })}</span>
+          <span class="flex items-center gap-1.5">
+            ${q.level ? `<span class="badge badge-${LEVEL_TONE[q.level] || 'amber'}">${t('student.level.' + q.level)}</span>` : ''}
+            <span class="text-xs text-[color:var(--text-faint)]">${t('common.points', { n: q.point })}</span>
+          </span>
         </div>
-        <p class="text-sm leading-relaxed text-[color:var(--text-muted)]">${q.story_text}</p>
+        <p class="text-sm leading-relaxed text-[color:var(--text-muted)]">${window.ui.escapeHtml(pickStory(q))}</p>
       </div>`
     )
     .join('');
@@ -302,4 +331,11 @@ window.addEventListener('i18n:changed', () => {
 });
 
 // resume flow if the student refreshes mid-exam
-if (token) checkActiveParticipant();
+if (token) {
+  try {
+    setIdentity(JSON.parse(localStorage.getItem('tekser_user') || '{}'));
+  } catch {
+    /* ignore */
+  }
+  checkActiveParticipant();
+}

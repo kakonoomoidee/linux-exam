@@ -79,7 +79,7 @@ function initSockets(httpServer) {
     socket.on('admin:join', ({ token }) => {
       try {
         const decoded = jwt.verify(token, config.jwtSecret);
-        if (decoded.role !== 'admin') throw new Error('not admin');
+        if (!['instruktur', 'asisten'].includes(decoded.role)) throw new Error('not staff');
         socket.join('admin-dashboard');
       } catch (err) {
         socket.emit('exam:error', { message: 'Token admin tidak valid' });

@@ -25,8 +25,11 @@ router.get('/me/active-participant', async (req, res) => {
   const questions = (await Question.listForVariantIndex(participant.variant_index)).map((q) => ({
     id: q.id,
     order_index: q.order_index,
-    story_text: q.story_text,
+    story_text: q.story_text, // kept for back-compat; = the Indonesian version
+    story_text_id: q.story_text,
+    story_text_en: q.story_text_en || q.story_text, // fall back to ID so it's never blank
     point: q.point,
+    level: q.level,
   })); // accepted_patterns / checker script intentionally withheld from the client
 
   const submissions = await Submission.listForParticipant(participant.id);

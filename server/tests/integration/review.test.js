@@ -115,8 +115,8 @@ describe('GET /api/admin/review/sessions/:id/export.csv', () => {
     expect(res.headers['content-type']).toMatch(/text\/csv/);
 
     const lines = res.text.trim().split('\n');
-    expect(lines[0]).toBe('nim,nama,total_nilai,nilai_per_soal');
-    expect(lines[1]).toBe('20220140055,Budi,1,1');
+    expect(lines[0]).toBe('nim,nama,kelas,total_nilai,nilai_per_soal');
+    expect(lines[1]).toBe('20220140055,Budi,,1,1'); // kelas empty for this student
   });
 
   test('the CSV export accepts the token via query string (no Authorization header)', async () => {

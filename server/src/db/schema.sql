@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   nim           TEXT UNIQUE NOT NULL,
   name          TEXT,
-  role          TEXT NOT NULL DEFAULT 'student', -- 'student' | 'admin'
+  role          TEXT NOT NULL DEFAULT 'student', -- 'student' | 'asisten' | 'instruktur'
   password_hash TEXT,
   created_at    TIMESTAMPTZ DEFAULT now()
 );
@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS submissions (
 ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS lock_code       TEXT;
 ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS locked_at       TIMESTAMPTZ;
 ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS violation_count INTEGER NOT NULL DEFAULT 0;
+
+-- Student "Kelas", bilingual question text, and question difficulty. Additive and
+-- idempotent — safe to run on an existing production database with data.
+-- story_text stays the Indonesian version; story_text_en may be NULL (older rows).
+ALTER TABLE users     ADD COLUMN IF NOT EXISTS kelas         TEXT;
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS story_text_en TEXT;
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS level         TEXT DEFAULT 'medium'; -- easy | medium | hard
 
 CREATE INDEX IF NOT EXISTS idx_cmdlog_participant ON command_logs(participant_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_participant ON submissions(participant_id);

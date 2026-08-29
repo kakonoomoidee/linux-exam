@@ -1,6 +1,11 @@
-<section id="tab-review" class="tab-content hidden max-w-5xl mx-auto p-6">
+<section id="tab-review" class="tab-content hidden max-w-5xl mx-auto space-y-5">
+
+  <header class="mb-6">
+    <h1 class="page-title" data-i18n="admin.tabReview">Review Nilai</h1>
+    <p class="page-subtitle" data-i18n="admin.reviewSubtitle">Tinjau hasil otomatis per soal dan override nilai bila perlu.</p>
+  </header>
+
   <div class="card">
-    <div class="card-title" data-i18n="admin.reviewHeading">Review Jawaban</div>
     <div class="flex flex-wrap gap-2 items-center mb-4">
       <select id="review-session-select" class="field w-auto min-w-[180px]"></select>
       <select id="review-question-select" class="field w-auto flex-1 min-w-[240px]"></select>
@@ -11,6 +16,6 @@
         class="text-[color:var(--accent-hover)] hover:underline text-sm ml-auto"
         data-i18n="admin.exportCsv">Export CSV Nilai</a>
     </div>
-    <div id="review-table" class="overflow-x-auto"></div>
+    <div id="review-table"></div>
   </div>
 </section>

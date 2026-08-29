@@ -1,0 +1,38 @@
+<section id="tab-staff" class="tab-content hidden max-w-3xl mx-auto space-y-5">
+
+  <header class="mb-6">
+    <h1 class="page-title" data-i18n="admin.tabStaff">Staf</h1>
+    <p class="page-subtitle" data-i18n="admin.staffSubtitle">Kelola akun instruktur dan asisten. Hanya instruktur yang bisa mengubah daftar ini.</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title" data-i18n="admin.addStaffHeading">Tambah Akun Staf</div>
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div>
+        <label class="label" for="staff-nim" data-i18n="common.nim">NIM / Username</label>
+        <input id="staff-nim" class="field" data-i18n-ph="admin.staffNimPh" placeholder="mis. asisten1" />
+      </div>
+      <div>
+        <label class="label" for="staff-name" data-i18n="common.name">Nama</label>
+        <input id="staff-name" class="field" data-i18n-ph="admin.staffNamePh" placeholder="Nama lengkap" />
+      </div>
+      <div>
+        <label class="label" for="staff-password" data-i18n="common.password">Password</label>
+        <input id="staff-password" type="password" class="field" data-i18n-ph="common.password" placeholder="Password" />
+      </div>
+      <div>
+        <label class="label" for="staff-role" data-i18n="admin.staffRole">Peran</label>
+        <select id="staff-role" class="field">
+          <option value="asisten" data-i18n="admin.role.asisten">Asisten</option>
+          <option value="instruktur" data-i18n="admin.role.instruktur">Instruktur</option>
+        </select>
+      </div>
+    </div>
+    <button id="add-staff-btn" class="btn btn-primary btn-sm mt-3" data-i18n="admin.addStaff">Tambah Staf</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="admin.staffListHeading">Daftar Staf</div>
+    <div id="staff-list"></div>
+  </div>
+</section>

@@ -8,19 +8,24 @@ const db = require('../../src/db/connection');
 const { hash } = require('../../src/lib/password');
 const { signToken } = require('../../src/middleware/auth');
 
-async function createAdmin({ nim = 'admin', password = 'admin123', name = 'Administrator' } = {}) {
+async function createAdmin({ nim = 'admin', password = 'admin123', name = 'Administrator', role = 'instruktur' } = {}) {
   const password_hash = await hash(password);
   const row = await db.run(
-    `INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, 'admin', $3) RETURNING *`,
-    [nim, name, password_hash]
+    `INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, $3, $4) RETURNING *`,
+    [nim, name, role, password_hash]
   );
   return { ...row, password, token: signToken(row) };
 }
 
-async function createStudent({ nim = '20220140055', name = 'Budi Santoso' } = {}) {
+/** Staff account with the asisten (TA) role — full session/grade access, no question bank. */
+function createAsisten(opts = {}) {
+  return createAdmin({ nim: 'asisten', name: 'Asisten', ...opts, role: 'asisten' });
+}
+
+async function createStudent({ nim = '20220140055', name = 'Budi Santoso', kelas = null } = {}) {
   const row = await db.run(
-    `INSERT INTO users (nim, name, role) VALUES ($1, $2, 'student') RETURNING *`,
-    [nim, name]
+    `INSERT INTO users (nim, name, role, kelas) VALUES ($1, $2, 'student', $3) RETURNING *`,
+    [nim, name, kelas]
   );
   return { ...row, token: signToken(row) };
 }
@@ -75,7 +80,9 @@ async function createQuestion({
   variant_index = 5,
   order_index = 1,
   story_text = 'Do a thing',
+  story_text_en = null,
   point = 1,
+  level = 'medium',
   check_type = 'command_match',
   accepted_patterns = ['^ls$'],
   state_checker_script = null,
@@ -85,7 +92,9 @@ async function createQuestion({
     variant_index,
     order_index,
     story_text,
+    story_text_en,
     point,
+    level,
     check_type,
     accepted_patterns,
     state_checker_script,
@@ -102,6 +111,7 @@ async function scaffold() {
 
 module.exports = {
   createAdmin,
+  createAsisten,
   createStudent,
   createSession,
   createParticipant,

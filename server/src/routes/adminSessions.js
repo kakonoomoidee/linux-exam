@@ -35,7 +35,7 @@ router.post('/:id/participants', async (req, res) => {
   const session = await Session.findById(req.params.id);
   if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
-  const { nims } = req.body; // array of strings, optionally "NIM,Nama" per line handled client-side
+  const { nims } = req.body; // array of "NIM" strings or { nim, name, kelas } objects (parsed client-side)
   if (!Array.isArray(nims) || nims.length === 0) {
     return res.status(400).json({ error: 'nims (array) wajib diisi' });
   }
@@ -44,7 +44,8 @@ router.post('/:id/participants', async (req, res) => {
   for (const entry of nims) {
     const nim = typeof entry === 'string' ? entry.trim() : entry.nim;
     const name = typeof entry === 'object' ? entry.name : null;
-    const user = await User.findOrCreateStudent(nim, name);
+    const kelas = typeof entry === 'object' ? entry.kelas : null;
+    const user = await User.findOrCreateStudent(nim, name, kelas);
     const variantIndex = User.variantIndexForNim(nim);
     added.push(await Session.addParticipant(session.id, user.id, variantIndex));
   }

@@ -44,7 +44,7 @@ const Session = {
 
   listParticipants(sessionId) {
     return db.all(
-      `SELECT sp.*, u.nim, u.name
+      `SELECT sp.*, u.nim, u.name, u.kelas
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
        WHERE sp.session_id = $1
@@ -55,7 +55,7 @@ const Session = {
 
   getParticipant(participantId) {
     return db.get(
-      `SELECT sp.*, u.nim, u.name
+      `SELECT sp.*, u.nim, u.name, u.kelas
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
        WHERE sp.id = $1`,
@@ -65,7 +65,7 @@ const Session = {
 
   findParticipantByToken(token) {
     return db.get(
-      `SELECT sp.*, u.nim, u.name
+      `SELECT sp.*, u.nim, u.name, u.kelas
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
        WHERE sp.session_token = $1`,

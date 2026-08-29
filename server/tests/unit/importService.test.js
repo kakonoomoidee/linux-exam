@@ -94,6 +94,37 @@ describe('parseWorkbook — field parsing', () => {
     expect(parseWorkbook(f)).toHaveLength(1);
   });
 
+  test('story_id is accepted as an alias for story', () => {
+    const f = makeWorkbook({ 'Variant 1': [{ order: 1, story_id: 'from story_id' }] });
+    expect(parseWorkbook(f)[0].story_text).toBe('from story_id');
+  });
+
+  test('story_en maps to story_text_en; absent -> null', () => {
+    const f = makeWorkbook({
+      'Variant 1': [
+        { order: 1, story: 'a', story_en: 'the english one' },
+        { order: 2, story: 'b' },
+      ],
+    });
+    const [q1, q2] = parseWorkbook(f);
+    expect(q1.story_text_en).toBe('the english one');
+    expect(q2.story_text_en).toBeNull();
+  });
+
+  test('level is normalised: known values kept, unknown/empty -> medium', () => {
+    const f = makeWorkbook({
+      'Variant 1': [
+        { order: 1, story: 'a', level: 'HARD' },
+        { order: 2, story: 'b', level: 'bogus' },
+        { order: 3, story: 'c' },
+      ],
+    });
+    const qs = parseWorkbook(f);
+    expect(qs[0].level).toBe('hard');
+    expect(qs[1].level).toBe('medium');
+    expect(qs[2].level).toBe('medium');
+  });
+
   // --- documented current behaviour (see FINDINGS in the PR): no validation ---
   test('FINDING: a non-numeric point becomes NaN (not rejected, not defaulted)', () => {
     const f = makeWorkbook({ 'Variant 1': [{ order: 1, story: 's', point: 'abc' }] });

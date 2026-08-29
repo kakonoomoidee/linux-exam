@@ -23,11 +23,29 @@ function requireAuth(req, res, next) {
   }
 }
 
-function requireAdmin(req, res, next) {
+// Staff = instruktur (lecturer / super-admin) OR asisten (TA). Both can run
+// sessions and grade; only instruktur can touch the question bank or staff
+// accounts (see requireInstruktur). The 403 body is kept as 'Admin only' so
+// existing clients/tests keyed on that string don't break.
+function requireStaff(req, res, next) {
   requireAuth(req, res, () => {
-    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+    if (!['instruktur', 'asisten'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Admin only' });
+    }
     next();
   });
 }
 
-module.exports = { signToken, requireAuth, requireAdmin };
+function requireInstruktur(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role !== 'instruktur') {
+      return res.status(403).json({ error: 'Instruktur only' });
+    }
+    next();
+  });
+}
+
+// Back-compat alias: every route that used requireAdmin wants "any staff".
+const requireAdmin = requireStaff;
+
+module.exports = { signToken, requireAuth, requireAdmin, requireStaff, requireInstruktur };

@@ -2,6 +2,25 @@ const API = '/api';
 const t = (k, v) => window.i18n.t(k, v);
 let adminToken = localStorage.getItem('tekser_admin_token') || null;
 
+// Role rides in the JWT payload — decode it (no verification needed client-side,
+// the server enforces; this is only to hide buttons that would 403 anyway).
+function readRole(token) {
+  try {
+    return JSON.parse(atob((token || '').split('.')[1] || '')).role || null;
+  } catch {
+    return null;
+  }
+}
+window.adminRole = readRole(adminToken);
+
+/** Show/hide instruktur-only controls (sidebar links + [data-role="instruktur-visible"]). */
+function applyRoleVisibility() {
+  const isInstruktur = window.adminRole === 'instruktur';
+  document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {
+    el.hidden = !isInstruktur;
+  });
+}
+
 async function apiFetch(path, opts = {}) {
   const res = await fetch(`${API}${path}`, {
     ...opts,
@@ -30,6 +49,7 @@ document.getElementById('admin-login-btn').addEventListener('click', async () =>
     if (!res.ok) throw new Error(window.i18n.apiError(data.error));
     adminToken = data.token;
     localStorage.setItem('tekser_admin_token', adminToken);
+    window.adminRole = (data.user && data.user.role) || readRole(adminToken);
     boot();
   } catch (err) {
     errorEl.textContent = err.message;
@@ -44,11 +64,14 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
     if (btn.dataset.tab === 'review') window.loadReviewSessionOptions?.();
     if (btn.dataset.tab === 'grades') window.loadGradesSessionOptions?.();
+    if (btn.dataset.tab === 'questions') window.loadQuestionBank?.();
+    if (btn.dataset.tab === 'staff') window.loadStaff?.();
   });
 });
 function boot() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('dashboard-screen').classList.remove('hidden');
+  applyRoleVisibility();
   window.connectAdminSocket?.();
   window.loadSessions?.();
 }
