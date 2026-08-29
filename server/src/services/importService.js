@@ -5,8 +5,10 @@ const Question = require('../models/Question');
  * Expected column headers per row (case-insensitive, order doesn't matter):
  *   variant        - optional; 0-9. If omitted, inferred from sheet name (see below).
  *   order          - question order within the variant (1, 2, 3...)
- *   story          - the soal cerita text shown to the student
+ *   story / story_id - the soal cerita text shown to the student (Indonesian)
+ *   story_en       - optional English translation (may be blank)
  *   point          - numeric weight of this question (default 1)
+ *   level          - "easy" | "medium" | "hard" (default medium; unknown -> medium)
  *   check_type     - "command_match" | "state_check" | "both" (default command_match)
  *   accepted_patterns - one or more regex patterns, separated by " | " (pipe with spaces)
  *   state_checker  - bash script text (only needed for state_check/both)
@@ -43,11 +45,17 @@ function parseWorkbook(filePath) {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const level = ['easy', 'medium', 'hard'].includes(String(normalizedRow.level || '').toLowerCase())
+        ? String(normalizedRow.level).toLowerCase()
+        : 'medium';
+
       allQuestions.push({
         variant_index: variantIndex,
         order_index: parseInt(normalizedRow.order || idx + 1, 10),
-        story_text: String(normalizedRow.story || '').trim(),
+        story_text: String(normalizedRow.story_id || normalizedRow.story || '').trim(),
+        story_text_en: String(normalizedRow.story_en || '').trim() || null,
         point: parseFloat(normalizedRow.point || 1),
+        level,
         check_type: normalizedRow.check_type || 'command_match',
         accepted_patterns: patterns,
         state_checker_script: normalizedRow.state_checker || null,

@@ -89,5 +89,45 @@
     return div.innerHTML;
   }
 
-  window.ui = { confirm: uiConfirm, alert: uiAlert, alertPre: uiAlertPre, toast: uiToast, loading: uiLoading };
+  /**
+   * Deterministic avatar for a person: initials + a colour hashed from the
+   * key (name or NIM), so the same person always gets the same colour.
+   * Returns { initials, bg } — bg is an hsl() string.
+   */
+  function uiAvatar(key) {
+    const s = String(key == null ? '?' : key).trim() || '?';
+    const words = s.split(/\s+/).filter(Boolean);
+    const initials =
+      (words.length >= 2
+        ? (words[0][0] || '') + (words[1][0] || '')
+        : s.replace(/\s+/g, '').slice(0, 2)
+      ).toUpperCase() || '?';
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    const hue = Math.abs(h) % 360;
+    return { initials, bg: `hsl(${hue} 58% 45%)` };
+  }
+
+  /** Avatar as a ready-to-inject HTML string. */
+  function uiAvatarHtml(key, cls = '') {
+    const a = uiAvatar(key);
+    return `<span class="avatar ${cls}" style="background:${a.bg}" aria-hidden="true">${escapeHtml(a.initials)}</span>`;
+  }
+
+  /** Status pill HTML string. tone: green|amber|red|blue|gray */
+  function uiPill(text, tone = 'gray') {
+    return `<span class="badge badge-${tone}">${escapeHtml(String(text))}</span>`;
+  }
+
+  window.ui = {
+    confirm: uiConfirm,
+    alert: uiAlert,
+    alertPre: uiAlertPre,
+    toast: uiToast,
+    loading: uiLoading,
+    avatar: uiAvatar,
+    avatarHtml: uiAvatarHtml,
+    pill: uiPill,
+    escapeHtml,
+  };
 })();

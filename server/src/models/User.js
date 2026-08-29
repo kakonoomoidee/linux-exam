@@ -1,4 +1,7 @@
 const db = require('../db/connection');
+const { hash } = require('../lib/password');
+
+const STAFF_ROLES = ['instruktur', 'asisten'];
 
 const User = {
   findByNim(nim) {
@@ -9,27 +12,59 @@ const User = {
     return db.get('SELECT * FROM users WHERE id = $1', [id]);
   },
 
-  create({ nim, name, role = 'student', password_hash = null }) {
+  create({ nim, name, role = 'student', password_hash = null, kelas = null }) {
     return db.run(
-      'INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nim, name, role, password_hash]
+      'INSERT INTO users (nim, name, role, password_hash, kelas) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [nim, name, role, password_hash, kelas]
     );
   },
 
-  async findOrCreateStudent(nim, name = null) {
+  async findOrCreateStudent(nim, name = null, kelas = null) {
     const existing = await User.findByNim(nim);
     if (existing) {
-      // backfill a name if we now have one and the row was created name-less
-      if (name && !existing.name) {
-        return db.run('UPDATE users SET name = $1 WHERE id = $2 RETURNING *', [name, existing.id]);
-      }
-      return existing;
+      // backfill name / kelas if we now have them and the row was created without
+      const sets = [];
+      const vals = [];
+      if (name && !existing.name) { sets.push(`name = $${sets.length + 1}`); vals.push(name); }
+      if (kelas && !existing.kelas) { sets.push(`kelas = $${sets.length + 1}`); vals.push(kelas); }
+      if (sets.length === 0) return existing;
+      return db.run(
+        `UPDATE users SET ${sets.join(', ')} WHERE id = $${sets.length + 1} RETURNING *`,
+        [...vals, existing.id]
+      );
     }
-    return User.create({ nim, name, role: 'student' });
+    return User.create({ nim, name, role: 'student', kelas });
   },
 
   listAll() {
-    return db.all('SELECT id, nim, name, role FROM users ORDER BY nim');
+    return db.all('SELECT id, nim, name, role, kelas FROM users ORDER BY nim');
+  },
+
+  /** Instruktur + asisten accounts, for the admin "Staf" panel. */
+  listStaff() {
+    return db.all(
+      "SELECT id, nim, name, role FROM users WHERE role IN ('instruktur', 'asisten') ORDER BY role, nim"
+    );
+  },
+
+  async createStaff({ nim, name, password, role }) {
+    if (!STAFF_ROLES.includes(role)) throw new Error('role harus instruktur atau asisten');
+    if (!nim || !password) throw new Error('nim dan password wajib diisi');
+    return db.run(
+      `INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (nim) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role,
+                                       password_hash = EXCLUDED.password_hash
+       RETURNING id, nim, name, role`,
+      [nim, name || null, role, await hash(password)]
+    );
+  },
+
+  removeStaff(id) {
+    return db.run("DELETE FROM users WHERE id = $1 AND role IN ('instruktur', 'asisten')", [id]);
+  },
+
+  countInstruktur() {
+    return db.get("SELECT count(*)::int AS count FROM users WHERE role = 'instruktur'");
   },
 
   /** Last digit of NIM -> question variant index (0-9). Non-digit NIMs fall back to variant 0. */

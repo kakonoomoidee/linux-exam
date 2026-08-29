@@ -1,3 +1,7 @@
+const LEVEL_TONE = { easy: 'green', medium: 'amber', hard: 'red' };
+const levelBadge = (level) =>
+  window.ui.pill(t('admin.level.' + (level || 'medium')) || level || 'medium', LEVEL_TONE[level] || 'amber');
+
 async function loadReviewSessionOptions() {
   const sessions = await apiFetch('/admin/sessions');
   const sel = document.getElementById('review-session-select');
@@ -6,7 +10,10 @@ async function loadReviewSessionOptions() {
   const questions = await apiFetch('/admin/questions');
   const qSel = document.getElementById('review-question-select');
   qSel.innerHTML = questions
-    .map((q) => `<option value="${q.id}">V${q.variant_id ? '' : ''}#${q.order_index} - ${q.story_text.slice(0, 40)}...</option>`)
+    .map(
+      (q) =>
+        `<option value="${q.id}">[${(q.level || 'medium').toUpperCase()}] #${q.order_index} - ${q.story_text.slice(0, 40)}...</option>`
+    )
     .join('');
 }
 window.loadReviewSessionOptions = loadReviewSessionOptions;
@@ -40,7 +47,11 @@ async function loadReviewTable() {
   const fractions = [0, 0.25, 0.5, 0.75, 1];
   const table = document.getElementById('review-table');
   table.innerHTML = `
-    <p class="mb-3"><strong>${question.story_text}</strong> <span class="text-[color:var(--text-faint)] text-sm">(${t('admin.pointsAndType', { point: question.point, type: question.check_type })})</span></p>
+    <p class="mb-3 flex flex-wrap items-center gap-2">
+      ${levelBadge(question.level)}
+      <strong>${escapeHtml(question.story_text)}</strong>
+      <span class="text-[color:var(--text-faint)] text-sm">(${t('admin.pointsAndType', { point: question.point, type: question.check_type })})</span>
+    </p>
     <table class="data-table">
       <thead>
         <tr>
@@ -58,7 +69,7 @@ async function loadReviewTable() {
               .join('\n') || t('admin.noMatchingCmd');
             return `
               <tr>
-                <td class="pr-2 font-mono">${s.nim}<br><small class="text-[color:var(--text-faint)]">${s.name || ''}</small></td>
+                <td class="pr-2 font-mono">${s.nim}<br><small class="text-[color:var(--text-faint)]">${escapeHtml(s.name || '')}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}</small></td>
                 <td class="pr-2">${s.auto_result === 'pass' ? '✅' : s.auto_result === 'fail' ? '❌' : '—'}</td>
                 <td class="pr-2 font-mono text-xs text-[color:var(--text-muted)] max-w-xs">
                   <pre class="whitespace-pre-wrap">${escapeHtml(logLines)}</pre>

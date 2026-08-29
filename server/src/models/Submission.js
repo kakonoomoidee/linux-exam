@@ -36,7 +36,7 @@ const CommandLog = {
     return db.all(
       `SELECT cl.id, cl.raw_command, cl.exit_code, cl.created_at,
               cl.question_id, q.order_index AS question_order,
-              cl.participant_id, u.nim, u.name,
+              cl.participant_id, u.nim, u.name, u.kelas,
               (sub.matched_command_log_id = cl.id) AS is_match
        FROM command_logs cl
        JOIN session_participants sp ON sp.id = cl.participant_id
@@ -92,7 +92,7 @@ const Submission = {
 
   listForParticipant(participantId) {
     return db.all(
-      `SELECT s.*, q.order_index, q.story_text, q.point
+      `SELECT s.*, q.order_index, q.story_text, q.story_text_en, q.point, q.level
        FROM submissions s
        JOIN questions q ON q.id = s.question_id
        WHERE s.participant_id = $1
@@ -103,7 +103,7 @@ const Submission = {
 
   listForSessionQuestion(sessionId, questionId) {
     return db.all(
-      `SELECT s.*, sp.id as participant_id, u.nim, u.name
+      `SELECT s.*, sp.id as participant_id, u.nim, u.name, u.kelas
        FROM submissions s
        JOIN session_participants sp ON sp.id = s.participant_id
        JOIN users u ON u.id = sp.user_id

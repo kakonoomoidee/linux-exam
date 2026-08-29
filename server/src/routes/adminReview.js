@@ -98,6 +98,7 @@ router.get('/sessions/:sessionId/grades', async (req, res) => {
         participant_id: p.id,
         nim: p.nim,
         name: p.name,
+        kelas: p.kelas,
         variant_index: p.variant_index,
         container_status: p.container_status,
         solvedCount,
@@ -138,6 +139,10 @@ router.get('/sessions/:sessionId/transcript', async (req, res) => {
 });
 
 /** CSV export for the whole session, ready for the campus academic system. */
+const csvCell = (v) => {
+  const s = v == null ? '' : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 router.get('/sessions/:sessionId/export.csv', async (req, res) => {
   const participants = await Session.listParticipants(req.params.sessionId);
   const rows = await Promise.all(
@@ -145,10 +150,10 @@ router.get('/sessions/:sessionId/export.csv', async (req, res) => {
       const submissions = await Submission.listForParticipant(p.id);
       const total = submissions.reduce((sum, s) => sum + (s.final_score ?? s.auto_score), 0);
       const perQuestion = submissions.map((s) => (s.final_score ?? s.auto_score)).join(',');
-      return `${p.nim},${p.name || ''},${total},${perQuestion}`;
+      return `${csvCell(p.nim)},${csvCell(p.name)},${csvCell(p.kelas)},${total},${perQuestion}`;
     })
   );
-  const header = 'nim,nama,total_nilai,nilai_per_soal';
+  const header = 'nim,nama,kelas,total_nilai,nilai_per_soal';
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', `attachment; filename=session-${req.params.sessionId}-nilai.csv`);
   res.send([header, ...rows].join('\n'));

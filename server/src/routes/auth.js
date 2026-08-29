@@ -18,20 +18,26 @@ router.post('/login/student', async (req, res) => {
   if (!user || user.role !== 'student') {
     return res.status(404).json({ error: 'NIM tidak terdaftar' });
   }
-  res.json({ token: signToken(user), user: { id: user.id, nim: user.nim, name: user.name } });
+  res.json({
+    token: signToken(user),
+    user: { id: user.id, nim: user.nim, name: user.name, kelas: user.kelas },
+  });
 });
 
-/** Admin login: username(nim field reused) + password. */
+/** Staff login (instruktur / asisten): username (nim field reused) + password. */
 router.post('/login/admin', async (req, res) => {
   const { nim, password } = req.body;
   const user = await User.findByNim(nim);
-  if (!user || user.role !== 'admin' || !user.password_hash) {
+  if (!user || !['instruktur', 'asisten'].includes(user.role) || !user.password_hash) {
     return res.status(401).json({ error: 'Kredensial salah' });
   }
   if (!(await verify(password, user.password_hash))) {
     return res.status(401).json({ error: 'Kredensial salah' });
   }
-  res.json({ token: signToken(user), user: { id: user.id, nim: user.nim, name: user.name } });
+  res.json({
+    token: signToken(user),
+    user: { id: user.id, nim: user.nim, name: user.name, role: user.role },
+  });
 });
 
 module.exports = router;

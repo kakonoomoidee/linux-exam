@@ -1,9 +1,23 @@
-<section id="tab-questions" class="tab-content hidden max-w-4xl mx-auto p-6">
-  <div class="card">
+<section id="tab-questions" class="tab-content hidden max-w-5xl mx-auto space-y-5">
+
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="page-title" data-i18n="admin.tabQuestions">Bank Soal</h1>
+      <p class="page-subtitle" data-i18n="admin.questionsSubtitle">Kelola soal per variant (0-9). Impor massal dari Excel atau tambah satu per satu.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a id="download-template-link" class="btn btn-ghost btn-sm" download>
+        <span data-i18n="admin.downloadTemplate">Download Template</span>
+      </a>
+      <button id="add-question-btn" class="btn btn-primary btn-sm" data-i18n="admin.addQuestion">Tambah Soal</button>
+    </div>
+  </header>
+
+  <div class="card" id="import-card">
     <div class="card-title" data-i18n="admin.importHeading">Import Soal dari Excel</div>
     <p class="text-[color:var(--text-muted)] text-sm mb-4 leading-relaxed" data-i18n="admin.importFormatHelp">
-      Format: 1 sheet per variant (0-9), kolom: order, story, point, check_type,
-      accepted_patterns (pisah "|"), state_checker
+      Format: 1 sheet per variant (0-9), kolom: order, story_id, story_en, point, level,
+      check_type, accepted_patterns (pisah "|"), state_checker
     </p>
     <input type="file" id="excel-file" accept=".xlsx,.xls"
       class="field text-sm text-[color:var(--text-muted)] mb-4
@@ -12,5 +26,10 @@
     <button id="import-questions-btn" class="btn btn-primary btn-sm" data-i18n="admin.importBtn">Import</button>
     <pre id="import-result"
       class="mt-4 text-sm bg-[color:var(--bg)] border border-[color:var(--border)] p-3 rounded-[var(--radius-sm)] whitespace-pre-wrap empty:hidden"></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="admin.questionBankHeading">Daftar Soal</div>
+    <div id="question-bank-list"></div>
   </div>
 </section>

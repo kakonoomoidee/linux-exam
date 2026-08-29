@@ -11,15 +11,19 @@ window.loadGradesSessionOptions = loadGradesSessionOptions;
 document.getElementById('grades-load-btn').addEventListener('click', loadGradesTable);
 document.getElementById('grades-session-select').addEventListener('change', loadGradesTable);
 
-const containerBadge = {
-  active: 'badge-green',
-  ending: 'badge-amber',
-  ended: 'badge-gray',
-  destroyed: 'badge-gray',
-  error: 'badge-gray',
-  not_started: 'badge-gray',
-  provisioning: 'badge-amber',
+const GRADES_CONTAINER_TONE = {
+  active: 'green',
+  running: 'green',
+  ready: 'blue',
+  ending: 'amber',
+  provisioning: 'amber',
+  not_started: 'gray',
+  ended: 'gray',
+  destroyed: 'gray',
+  error: 'red',
 };
+const gSkeleton = (n = 3) =>
+  `<div class="row-list">${Array.from({ length: n }, () => '<div class="skeleton skeleton-row"></div>').join('')}</div>`;
 
 async function loadGradesTable() {
   const sessionId = document.getElementById('grades-session-select').value;
@@ -28,43 +32,47 @@ async function loadGradesTable() {
   document.getElementById('grades-export-csv-link').href =
     `${API}/admin/review/sessions/${sessionId}/export.csv?token=${adminToken}`;
 
-  const { rows } = await apiFetch(`/admin/review/sessions/${sessionId}/grades`);
   const table = document.getElementById('grades-table');
+  table.innerHTML = gSkeleton(3);
+  const { rows } = await apiFetch(`/admin/review/sessions/${sessionId}/grades`);
 
   if (rows.length === 0) {
-    table.innerHTML = `<p class="text-sm text-[color:var(--text-faint)]">${t('admin.noParticipantsYet')}</p>`;
+    table.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <div class="empty-state__title">${escHtml(t('admin.noParticipantsYet'))}</div>
+    </div>`;
     return;
   }
 
-  table.innerHTML = `
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>${t('common.nim')}</th>
-          <th>${t('common.name')}</th>
-          <th>${t('common.variant')}</th>
-          <th>${t('admin.containerStatus')}</th>
-          <th>${t('admin.solved')}</th>
-          <th>${t('admin.reviewed')}</th>
-          <th>${t('admin.totalScore')}</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows
-          .map(
-            (r) => `<tr>
-              <td class="font-mono">${r.nim}</td>
-              <td>${r.name || '-'}</td>
-              <td>${r.variant_index}</td>
-              <td><span class="badge ${containerBadge[r.container_status] || 'badge-gray'}">${t('admin.status.' + r.container_status) !== 'admin.status.' + r.container_status ? t('admin.status.' + r.container_status) : r.container_status}</span></td>
-              <td>${r.solvedCount}/${r.totalQuestions}</td>
-              <td>${r.reviewedCount}/${r.totalQuestions}</td>
-              <td class="font-semibold">${r.total} / ${r.maxTotal}</td>
-            </tr>`
-          )
-          .join('')}
-      </tbody>
-    </table>`;
+  const statusLabel = (s) => {
+    const k = 'admin.status.' + s;
+    return t(k) === k ? s : t(k);
+  };
+
+  table.innerHTML = `<div class="row-list">${rows
+    .map((r) => {
+      const meta = [
+        `<span class="mono">${escHtml(r.nim)}</span>`,
+        `<span>${t('common.variant')} ${r.variant_index}</span>`,
+        r.kelas ? `<span>${escHtml(r.kelas)}</span>` : '',
+      ]
+        .filter(Boolean)
+        .join('');
+      return `<div class="card-row">
+        ${window.ui.avatarHtml(r.name || r.nim)}
+        <div class="card-row__identity">
+          <div class="card-row__name">${escHtml(r.name || '-')}</div>
+          <div class="card-row__meta">${meta}</div>
+        </div>
+        <div class="card-row__aside">
+          ${window.ui.pill(statusLabel(r.container_status), GRADES_CONTAINER_TONE[r.container_status] || 'gray')}
+          <span class="badge badge-blue badge-plain">${t('admin.solved')} ${r.solvedCount}/${r.totalQuestions}</span>
+          <span class="badge badge-gray badge-plain">${t('admin.reviewed')} ${r.reviewedCount}/${r.totalQuestions}</span>
+          <span class="badge badge-plain" style="font-weight:700">${r.total} / ${r.maxTotal}</span>
+        </div>
+      </div>`;
+    })
+    .join('')}</div>`;
 }
 
 // ---- session transcript: every command, every participant, time-ordered ----
@@ -129,6 +137,7 @@ function renderTranscript() {
           <tr>
             <th>${t('admin.time')}</th>
             <th>${t('common.nim')}</th>
+            <th>${t('common.kelas')}</th>
             <th>${t('admin.command')}</th>
             <th>${t('admin.exit')}</th>
             <th>${t('admin.question')}</th>
@@ -149,6 +158,7 @@ function renderTranscript() {
               return `<tr>
                 <td class="whitespace-nowrap text-[color:var(--text-faint)]">${time(e.created_at)}</td>
                 <td class="font-mono whitespace-nowrap">${escHtml(e.nim)}</td>
+                <td class="whitespace-nowrap text-[color:var(--text-muted)]">${escHtml(e.kelas || '—')}</td>
                 <td class="font-mono text-xs">${escHtml(e.raw_command)}</td>
                 <td>${exit}</td>
                 <td class="whitespace-nowrap">${q}</td>

@@ -46,8 +46,11 @@
   <div id="exam-screen" class="screen hidden h-screen flex flex-col">
     <header class="flex items-center justify-between gap-4 px-5 py-3 bg-[color:var(--surface)] border-b border-[color:var(--border)]">
       <div class="flex items-center gap-3 min-w-0">
-        <div class="brand-mark">&gt;_</div>
-        <span id="student-name" class="font-medium truncate"></span>
+        <span id="student-avatar" class="avatar avatar-sm" aria-hidden="true"></span>
+        <div class="min-w-0 leading-tight">
+          <div id="student-name" class="font-semibold truncate"></div>
+          <div id="student-kelas" class="meta-faint truncate"></div>
+        </div>
       </div>
       <div class="text-center leading-none">
         <div class="text-[10px] uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-1"

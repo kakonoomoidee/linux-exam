@@ -54,6 +54,100 @@ describe('POST /api/admin/questions/import', () => {
   });
 });
 
+describe('GET /api/admin/questions/template.xlsx', () => {
+  test('returns a parseable xlsx with the documented header columns', async () => {
+    const res = await request(app)
+      .get('/api/admin/questions/template.xlsx')
+      .set(auth)
+      .buffer(true)
+      .parse((r, cb) => {
+        const chunks = [];
+        r.on('data', (c) => chunks.push(c));
+        r.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/spreadsheetml/);
+
+    const wb = XLSX.read(res.body, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const headers = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0];
+    expect(headers).toEqual([
+      'order',
+      'story_id',
+      'story_en',
+      'point',
+      'level',
+      'check_type',
+      'accepted_patterns',
+      'state_checker',
+    ]);
+    // at least one example row
+    expect(XLSX.utils.sheet_to_json(sheet).length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('question CRUD', () => {
+  test('create -> patch -> delete round-trip', async () => {
+    const created = await request(app)
+      .post('/api/admin/questions')
+      .set(auth)
+      .send({
+        variant_index: 3,
+        order_index: 1,
+        story_text: 'tampilkan tanggal',
+        story_text_en: 'print the date',
+        point: 2,
+        level: 'hard',
+        check_type: 'command_match',
+        accepted_patterns: ['^date$'],
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      story_text: 'tampilkan tanggal',
+      story_text_en: 'print the date',
+      level: 'hard',
+      point: 2,
+    });
+
+    const id = created.body.id;
+    const patched = await request(app)
+      .patch(`/api/admin/questions/${id}`)
+      .set(auth)
+      .send({ level: 'easy', story_text_en: 'show the date' });
+    expect(patched.status).toBe(200);
+    expect(patched.body.level).toBe('easy');
+    expect(patched.body.story_text_en).toBe('show the date');
+
+    const del = await request(app).delete(`/api/admin/questions/${id}`).set(auth);
+    expect(del.status).toBe(200);
+
+    const after = await request(app).get('/api/admin/questions/variant/3').set(auth);
+    expect(after.body).toHaveLength(0);
+  });
+
+  test('create without story_text -> 400', async () => {
+    const res = await request(app)
+      .post('/api/admin/questions')
+      .set(auth)
+      .send({ variant_index: 3, order_index: 1 });
+    expect(res.status).toBe(400);
+  });
+
+  test('patch / delete a missing question -> 404', async () => {
+    expect((await request(app).patch('/api/admin/questions/999999').set(auth).send({ level: 'easy' })).status).toBe(404);
+    expect((await request(app).delete('/api/admin/questions/999999').set(auth)).status).toBe(404);
+  });
+
+  test('an unknown level on create is normalised to medium', async () => {
+    const res = await request(app)
+      .post('/api/admin/questions')
+      .set(auth)
+      .send({ variant_index: 2, order_index: 9, story_text: 's', level: 'spicy' });
+    expect(res.status).toBe(201);
+    expect(res.body.level).toBe('medium');
+  });
+});
+
 describe('GET /api/admin/questions', () => {
   test('/variant/:variantIndex returns just that variant, /  returns all variants', async () => {
     await request(app).post('/api/admin/questions/import').set(auth).attach(

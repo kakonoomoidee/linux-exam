@@ -1,4 +1,9 @@
-<section id="tab-sessions" class="tab-content max-w-4xl mx-auto p-6 space-y-5">
+<section id="tab-sessions" class="tab-content max-w-5xl mx-auto space-y-5">
+
+  <header class="mb-6">
+    <h1 class="page-title" data-i18n="admin.tabSessions">Sesi</h1>
+    <p class="page-subtitle" data-i18n="admin.sessionsSubtitle">Buat sesi ujian, tambahkan peserta, dan mulai ujian.</p>
+  </header>
 
   <div class="card">
     <div class="card-title" data-i18n="admin.createSessionHeading">Buat Sesi Baru</div>
@@ -20,7 +25,7 @@
 
   <div class="card">
     <div class="card-title" data-i18n="admin.sessionListHeading">Daftar Sesi</div>
-    <div id="session-list" class="-mx-2"></div>
+    <div id="session-list"></div>
   </div>
 
   <div class="card hidden" id="session-detail-panel">
@@ -28,14 +33,14 @@
     <label class="label" for="participant-nims" data-i18n="admin.addParticipants">Tambah Peserta</label>
     <textarea id="participant-nims" rows="4" class="field font-mono text-sm mb-3"
       data-i18n-ph="admin.nimsPlaceholder"
-      placeholder="Tempel daftar NIM (satu per baris)&#10;20220140055&#10;20220140056"></textarea>
+      placeholder="Satu per baris — NIM, atau &quot;NIM, Nama, Kelas&quot;&#10;20220140055, Budi Santoso, TI-3A&#10;20220140056, Siti Rahma, TI-3B"></textarea>
     <div class="flex flex-wrap gap-2">
       <button id="add-participants-btn" class="btn btn-ghost btn-sm"
         data-i18n="admin.addParticipants">Tambah Peserta</button>
       <button id="start-session-btn" class="btn btn-success btn-sm"
         data-i18n="admin.startSession">▶ Mulai Sesi</button>
     </div>
-    <div id="participant-list" class="mt-4 overflow-x-auto"></div>
+    <div id="participant-list" class="mt-4"></div>
   </div>
 
 </section>

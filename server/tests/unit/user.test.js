@@ -53,11 +53,34 @@ describe('User.findOrCreateStudent', () => {
     expect(res.name).toBe('Original');
   });
 
+  test('stores kelas on create and backfills it onto a kelas-less row', async () => {
+    const created = await User.findOrCreateStudent('20220140010', 'Andi', 'TI-3C');
+    expect(created.kelas).toBe('TI-3C');
+
+    await User.create({ nim: '20220140011', name: 'Rina' });
+    const filled = await User.findOrCreateStudent('20220140011', 'Rina', 'SI-2B');
+    expect(filled.kelas).toBe('SI-2B');
+
+    const kept = await User.findOrCreateStudent('20220140010', 'Andi', 'ZZ-9Z');
+    expect(kept.kelas).toBe('TI-3C'); // not overwritten
+  });
+
   test('two sequential calls with the same NIM yield exactly one row', async () => {
     await User.findOrCreateStudent('20220140005', 'X');
     await User.findOrCreateStudent('20220140005', 'X');
     const { count } = await db.get(`SELECT count(*)::int FROM users WHERE nim = '20220140005'`);
     expect(count).toBe(1);
+  });
+
+  test('staff helpers: createStaff + listStaff + countInstruktur', async () => {
+    await User.createStaff({ nim: 'inst1', name: 'Dosen', password: 'pw', role: 'instruktur' });
+    await User.createStaff({ nim: 'asis1', name: 'TA', password: 'pw', role: 'asisten' });
+    const staff = await User.listStaff();
+    expect(staff.map((s) => s.nim).sort()).toEqual(['asis1', 'inst1']);
+    expect(staff.every((s) => !('password_hash' in s))).toBe(true);
+    const { count } = await User.countInstruktur();
+    expect(count).toBe(1);
+    await expect(User.createStaff({ nim: 'x', password: 'p', role: 'student' })).rejects.toThrow();
   });
 
   test('concurrent calls race, but the unique constraint still leaves exactly one row', async () => {
