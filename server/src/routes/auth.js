@@ -1,26 +1,35 @@
 const express = require('express');
-const { verify } = require('../lib/password');
+const { verify, checkStudentPassword } = require('../lib/password');
 const User = require('../models/User');
 const { signToken } = require('../middleware/auth');
 
 const router = express.Router();
 
 /**
- * Student login: NIM only (no password) since accounts are pre-provisioned
- * by the admin per session — this matches "ada list account nya siapa aja
- * yang bakal masuk sesi ini". Swap in a password check here later if needed.
+ * Student login: NIM + password. The password defaults to the NIM and must be
+ * changed on first login (mustChangePassword in the response + JWT claim). Legacy
+ * rows created before student passwords have password_hash = NULL — for those the
+ * password is the NIM and the change is always forced.
  */
 router.post('/login/student', async (req, res) => {
-  const { nim } = req.body;
+  const { nim, password } = req.body;
   if (!nim) return res.status(400).json({ error: 'nim wajib diisi' });
+  if (!password) return res.status(400).json({ error: 'password wajib diisi' });
 
   const user = await User.findByNim(nim);
   if (!user || user.role !== 'student') {
     return res.status(404).json({ error: 'NIM tidak terdaftar' });
   }
+  if (!(await checkStudentPassword(user, password))) {
+    return res.status(401).json({ error: 'Password salah' });
+  }
+
+  // A NULL-hash row must change regardless of the stored flag.
+  const mustChangePassword = !user.password_hash || user.must_change_password;
   res.json({
-    token: signToken(user),
+    token: signToken({ ...user, must_change_password: mustChangePassword }),
     user: { id: user.id, nim: user.nim, name: user.name, kelas: user.kelas },
+    mustChangePassword,
   });
 });
 

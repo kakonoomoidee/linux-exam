@@ -41,16 +41,19 @@ describe('POST /api/auth/login/admin', () => {
 });
 
 describe('POST /api/auth/login/student', () => {
-  test('registered NIM -> token', async () => {
-    await createStudent({ nim: '20220140055', name: 'Budi' });
-    const res = await request(app).post('/api/auth/login/student').send({ nim: '20220140055' });
+  test('registered NIM + correct password -> token', async () => {
+    await createStudent({ nim: '20220140055', name: 'Budi', password: '20220140055', must_change_password: true });
+    const res = await request(app)
+      .post('/api/auth/login/student')
+      .send({ nim: '20220140055', password: '20220140055' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeTruthy();
     expect(res.body.user.name).toBe('Budi');
+    expect(res.body.mustChangePassword).toBe(true);
   });
 
   test('unknown NIM -> 404', async () => {
-    const res = await request(app).post('/api/auth/login/student').send({ nim: '00000000000' });
+    const res = await request(app).post('/api/auth/login/student').send({ nim: '00000000000', password: 'x' });
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('NIM tidak terdaftar');
   });
@@ -60,10 +63,89 @@ describe('POST /api/auth/login/student', () => {
     expect(res.status).toBe(400);
   });
 
+  test('missing password -> 400', async () => {
+    await createStudent({ nim: '20220140055', password: '20220140055' });
+    const res = await request(app).post('/api/auth/login/student').send({ nim: '20220140055' });
+    expect(res.status).toBe(400);
+  });
+
   test('the server does NOT trim the NIM — surrounding whitespace fails to match (client trims)', async () => {
-    await createStudent({ nim: '20220140055' });
-    const res = await request(app).post('/api/auth/login/student').send({ nim: '  20220140055  ' });
+    await createStudent({ nim: '20220140055', password: '20220140055' });
+    const res = await request(app)
+      .post('/api/auth/login/student')
+      .send({ nim: '  20220140055  ', password: '20220140055' });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('student password flow', () => {
+  const NIM = '20220140055';
+
+  test('default password (= NIM) logs in and flags mustChangePassword', async () => {
+    await createStudent({ nim: NIM, password: NIM, must_change_password: true });
+    const res = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: NIM });
+    expect(res.status).toBe(200);
+    expect(res.body.mustChangePassword).toBe(true);
+  });
+
+  test('legacy NULL-hash student: password is the NIM, forced change', async () => {
+    await createStudent({ nim: NIM }); // password_hash NULL, must_change_password false in the row
+    const res = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: NIM });
+    expect(res.status).toBe(200);
+    expect(res.body.mustChangePassword).toBe(true);
+  });
+
+  test('wrong password -> 401', async () => {
+    await createStudent({ nim: NIM, password: NIM });
+    const res = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: 'wrong-one' });
+    expect(res.status).toBe(401);
+  });
+
+  test('change-password end to end', async () => {
+    await createStudent({ nim: NIM, password: NIM, must_change_password: true });
+    const login = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: NIM });
+    const token = login.body.token;
+
+    // gated before the change
+    const blocked = await request(app).get('/api/me/history').set('Authorization', `Bearer ${token}`);
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.code).toBe('MUST_CHANGE_PASSWORD');
+
+    const changed = await request(app)
+      .post('/api/me/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: NIM, newPassword: 'brand-new-pass' });
+    expect(changed.status).toBe(200);
+    expect(changed.body.token).toBeTruthy();
+
+    // fresh token is no longer gated
+    const ok = await request(app).get('/api/me/history').set('Authorization', `Bearer ${changed.body.token}`);
+    expect(ok.status).toBe(200);
+
+    // old password rejected, new password works and no longer forces a change
+    const oldLogin = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: NIM });
+    expect(oldLogin.status).toBe(401);
+    const newLogin = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: 'brand-new-pass' });
+    expect(newLogin.status).toBe(200);
+    expect(newLogin.body.mustChangePassword).toBe(false);
+  });
+
+  test('new password cannot equal the NIM, and must meet the minimum length', async () => {
+    await createStudent({ nim: NIM, password: NIM, must_change_password: true });
+    const { body } = await request(app).post('/api/auth/login/student').send({ nim: NIM, password: NIM });
+    const auth = { Authorization: `Bearer ${body.token}` };
+
+    const sameAsNim = await request(app)
+      .post('/api/me/password')
+      .set(auth)
+      .send({ currentPassword: NIM, newPassword: NIM });
+    expect(sameAsNim.status).toBe(400);
+
+    const tooShort = await request(app)
+      .post('/api/me/password')
+      .set(auth)
+      .send({ currentPassword: NIM, newPassword: 'short' });
+    expect(tooShort.status).toBe(400);
   });
 });
 

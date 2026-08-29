@@ -1,4 +1,5 @@
 const db = require('../db/connection');
+const joinCode = require('../lib/joinCode');
 
 const Session = {
   create({ name, duration_minutes }) {
@@ -25,6 +26,27 @@ const Session = {
 
   markEnded(id) {
     return db.run("UPDATE sessions SET status = 'ended' WHERE id = $1 RETURNING *", [id]);
+  },
+
+  // Allocate the session's join code once, on first call (idempotent). Retries on the
+  // partial-unique collision on sessions.join_code; the keyspace makes >1 retry unheard of.
+  async ensureJoinCode(id) {
+    const current = await Session.findById(id);
+    if (!current) return undefined;
+    if (current.join_code) return current;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const row = await db.run(
+          'UPDATE sessions SET join_code = $1 WHERE id = $2 AND join_code IS NULL RETURNING *',
+          [joinCode.generate(), id]
+        );
+        return row || Session.findById(id); // no row => a concurrent call already set it
+      } catch (err) {
+        if (/unique|duplicate/i.test(err.message)) continue;
+        throw err;
+      }
+    }
+    throw new Error(`could not allocate a unique join_code for session ${id}`);
   },
 
   // participants / command_logs / submissions all cascade (see schema.sql)

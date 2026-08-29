@@ -61,8 +61,9 @@ document.getElementById('start-session-btn').addEventListener('click', async () 
   const ok = await window.ui.confirm(t('admin.startConfirm'), { icon: 'warning', confirmText: t('admin.startSession') });
   if (!ok) return;
   await apiFetch(`/admin/sessions/${currentSessionId}/start`, { method: 'POST' });
-  window.ui.toast(t('admin.provisioningStarted'), 'info');
-  setTimeout(() => loadParticipants(currentSessionId), 3000);
+  window.ui.toast(t('admin.sessionStarted'), 'success');
+  loadSessions();
+  loadParticipants(currentSessionId); // reveals the join code
 });
 
 async function loadSessions() {
@@ -158,7 +159,10 @@ function openSession(id, sessions) {
 async function loadParticipants(sessionId) {
   const list = document.getElementById('participant-list');
   list.innerHTML = `<div class="row-list">${skeletonRows(3)}</div>`;
-  const participants = await apiFetch(`/admin/sessions/${sessionId}/participants`);
+  const session = await apiFetch(`/admin/sessions/${sessionId}`);
+  const participants = session.participants || [];
+
+  renderJoinCode(session);
 
   if (participants.length === 0) {
     list.innerHTML = emptyState(t('admin.noParticipantsYet'), t('admin.noParticipantsHint'));
@@ -173,6 +177,16 @@ async function loadParticipants(sessionId) {
       loadParticipants(sessionId);
     });
   });
+}
+
+function renderJoinCode(session) {
+  const box = document.getElementById('join-code-box');
+  if (session.status === 'running' && session.join_code) {
+    document.getElementById('join-code-value').textContent = session.join_code;
+    box.classList.remove('hidden');
+  } else {
+    box.classList.add('hidden');
+  }
 }
 
 function renderParticipantRow(p) {

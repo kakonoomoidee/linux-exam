@@ -22,13 +22,68 @@
       <div class="brand-mark mx-auto mb-4">&gt;_</div>
       <h1 class="text-lg font-bold" data-i18n="student.title">Ujian Praktikum Linux</h1>
       <p class="text-sm text-[color:var(--text-faint)] mt-1 mb-6" data-i18n="student.loginSubtitle">
-        Masuk dengan NIM untuk memulai.
+        Masuk dengan NIM dan password.
       </p>
       <label class="label text-left" for="nim-input" data-i18n="common.nim">NIM</label>
-      <input id="nim-input" class="field mb-4" data-i18n-ph="student.nimPlaceholder"
+      <input id="nim-input" class="field mb-3" data-i18n-ph="student.nimPlaceholder"
         placeholder="Masukkan NIM" autocomplete="off" inputmode="numeric" />
+      <label class="label text-left" for="password-input" data-i18n="common.password">Password</label>
+      <input id="password-input" type="password" class="field mb-4" data-i18n-ph="student.passwordPlaceholder"
+        placeholder="Password (default: NIM)" autocomplete="off" />
       <button id="login-btn" class="btn btn-primary btn-block" data-i18n="common.login">Masuk</button>
       <p id="login-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+    </div>
+  </div>
+
+  <!-- forced password change on first login -->
+  <div id="change-password-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
+    <div class="card w-full max-w-sm text-center">
+      <div class="brand-mark mx-auto mb-4">&gt;_</div>
+      <h1 class="text-lg font-bold mb-1" data-i18n="student.changePwTitle">Ganti Password</h1>
+      <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
+        Password default harus diganti sebelum melanjutkan.
+      </p>
+      <label class="label text-left" for="current-pw-input" data-i18n="student.currentPw">Password saat ini</label>
+      <input id="current-pw-input" type="password" class="field mb-3" autocomplete="off" />
+      <label class="label text-left" for="new-pw-input" data-i18n="student.newPw">Password baru</label>
+      <input id="new-pw-input" type="password" class="field mb-3" autocomplete="off" />
+      <label class="label text-left" for="confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
+      <input id="confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
+      <button id="change-pw-btn" class="btn btn-primary btn-block" data-i18n="student.changePwBtn">Simpan</button>
+      <p id="change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+    </div>
+  </div>
+
+  <!-- dashboard: landing page after login -->
+  <div id="dashboard-screen" class="screen hidden min-h-screen p-6">
+    <div class="max-w-2xl mx-auto space-y-5">
+      <header class="card flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <span id="dash-avatar" class="avatar avatar-sm" aria-hidden="true"></span>
+          <div class="min-w-0 leading-tight">
+            <div id="dash-name" class="font-semibold truncate"></div>
+            <div class="meta-faint truncate">
+              <span id="dash-nim" class="mono"></span><span id="dash-kelas"></span>
+            </div>
+          </div>
+        </div>
+        <button id="logout-btn" class="btn btn-ghost btn-sm" data-i18n="common.logout">Keluar</button>
+      </header>
+
+      <div class="card">
+        <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
+        <div class="flex gap-2">
+          <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
+            maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
+          <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+        </div>
+        <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
+        <div id="history-list"></div>
+      </div>
     </div>
   </div>
 

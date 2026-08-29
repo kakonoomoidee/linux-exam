@@ -58,14 +58,16 @@ const sampleStudents = [
   console.log('[seed] asisten account ready (nim=asisten / password=asisten123)');
 
   // --- sample students with a Kelas ---
+  // findOrCreateStudent sets each new row's default password = its NIM and
+  // must_change_password = true, so seeded students match the real flow.
   for (const s of sampleStudents) await User.findOrCreateStudent(s.nim, s.name, s.kelas);
-  console.log(`[seed] ${sampleStudents.length} sample students inserted (with kelas)`);
+  console.log(`[seed] ${sampleStudents.length} sample students inserted (password = NIM, must change on first login)`);
 
   // --- sample questions for variant 5 only, so the flow is testable end-to-end ---
   for (const q of sampleQuestions) await Question.create(q);
   console.log(`[seed] ${sampleQuestions.length} sample questions inserted for variant 5`);
 
-  console.log('[seed] done. Try logging in as a student with any NIM ending in 5, e.g. nim=20220140055');
+  console.log('[seed] done. Log in as a student with nim=20220140055 and password=20220140055 (you will be asked to change it).');
   process.exit(0);
 })().catch((err) => {
   console.error(err);

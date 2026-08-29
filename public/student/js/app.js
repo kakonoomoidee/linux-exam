@@ -10,6 +10,8 @@ let examLocked = false;   // anti-cheat: true while the tab-switch lockdown over
 
 const screens = {
   login: document.getElementById('login-screen'),
+  changePassword: document.getElementById('change-password-screen'),
+  dashboard: document.getElementById('dashboard-screen'),
   waiting: document.getElementById('waiting-screen'),
   exam: document.getElementById('exam-screen'),
   ended: document.getElementById('ended-screen'),
@@ -23,40 +25,175 @@ document.getElementById('login-btn').addEventListener('click', login);
 document.getElementById('nim-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') login();
 });
+document.getElementById('password-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') login();
+});
 document.getElementById('submit-btn').addEventListener('click', submitExam);
+document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
+document.getElementById('logout-btn').addEventListener('click', logout);
+document.getElementById('join-btn').addEventListener('click', joinSession);
+document.getElementById('join-code-input').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase();
+});
+document.getElementById('join-code-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') joinSession();
+});
+
+/** Persist identity + the must-change flag together so a refresh knows where to land. */
+function persistUser(user, mustChangePassword) {
+  localStorage.setItem('tekser_user', JSON.stringify({ ...(user || {}), mustChangePassword: !!mustChangePassword }));
+}
+function storedUser() {
+  try {
+    return JSON.parse(localStorage.getItem('tekser_user') || '{}');
+  } catch {
+    return {};
+  }
+}
 
 async function login() {
   const nim = document.getElementById('nim-input').value.trim();
+  const password = document.getElementById('password-input').value;
   const errorEl = document.getElementById('login-error');
   errorEl.textContent = '';
-  if (!nim) return;
+  if (!nim || !password) return;
 
   try {
     const res = await fetch(`${API}/auth/login/student`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nim }),
+      body: JSON.stringify({ nim, password }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
     token = data.token;
     localStorage.setItem('tekser_token', token);
-    localStorage.setItem('tekser_user', JSON.stringify(data.user || {}));
+    persistUser(data.user, data.mustChangePassword);
     setIdentity(data.user);
-    checkActiveParticipant();
+    if (data.mustChangePassword) showScreen('changePassword');
+    else enterDashboard();
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('student.loginFailed');
   }
+}
+
+async function submitPasswordChange() {
+  const currentPassword = document.getElementById('current-pw-input').value;
+  const newPassword = document.getElementById('new-pw-input').value;
+  const confirm = document.getElementById('confirm-pw-input').value;
+  const errorEl = document.getElementById('change-pw-error');
+  errorEl.textContent = '';
+  if (!currentPassword || !newPassword) return;
+  if (newPassword !== confirm) {
+    errorEl.textContent = t('student.pwMismatch');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/me/password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    token = data.token; // fresh token, no longer must-change
+    localStorage.setItem('tekser_token', token);
+    persistUser(storedUser(), false);
+    enterDashboard();
+  } catch (err) {
+    errorEl.textContent = window.i18n.apiError(err.message) || t('common.requestFailed', { status: 0 });
+  }
+}
+
+function enterDashboard() {
+  const user = storedUser();
+  showScreen('dashboard');
+  document.getElementById('dash-name').textContent = user.name || user.nim || '';
+  document.getElementById('dash-nim').textContent = user.nim || '';
+  const kelasEl = document.getElementById('dash-kelas');
+  kelasEl.textContent = user.kelas ? ` · ${user.kelas}` : '';
+  const av = document.getElementById('dash-avatar');
+  if (av && window.ui) {
+    const a = window.ui.avatar(user.name || user.nim || '?');
+    av.textContent = a.initials;
+    av.style.background = a.bg;
+  }
+  loadHistory();
+}
+
+async function loadHistory() {
+  const list = document.getElementById('history-list');
+  try {
+    const res = await fetch(`${API}/me/history`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error();
+    const rows = await res.json();
+    if (!rows.length) {
+      list.innerHTML = `<p class="text-sm text-[color:var(--text-faint)]">${t('student.historyEmpty')}</p>`;
+      return;
+    }
+    list.innerHTML = rows
+      .map((r) => {
+        const when = r.started_at || r.created_at;
+        const date = when ? new Date(when).toLocaleDateString() : '';
+        return `<div class="py-2 border-b border-[color:var(--border)] last:border-0 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-medium truncate">${window.ui.escapeHtml(r.session_name || '')}</div>
+            <div class="meta-faint">${window.ui.escapeHtml(date)}</div>
+          </div>
+          <div class="font-bold shrink-0">${t('student.historyScore', { score: Number(r.score) })}</div>
+        </div>`;
+      })
+      .join('');
+  } catch {
+    list.innerHTML = `<p class="text-sm text-[color:var(--danger)]">${t('common.requestFailed', { status: 0 })}</p>`;
+  }
+}
+
+async function joinSession() {
+  const input = document.getElementById('join-code-input');
+  const code = input.value.trim().toUpperCase();
+  const errorEl = document.getElementById('join-error');
+  errorEl.textContent = '';
+  if (!code) return;
+
+  try {
+    const res = await fetch(`${API}/me/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error);
+    }
+    showScreen('waiting');
+    checkActiveParticipant();
+  } catch (err) {
+    errorEl.textContent = window.i18n.apiError(err.message) || t('student.joinFailed');
+  }
+}
+
+function logout() {
+  localStorage.removeItem('tekser_token');
+  localStorage.removeItem('tekser_user');
+  location.reload();
 }
 
 async function checkActiveParticipant() {
   const res = await fetch(`${API}/me/active-participant`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 403) {
+    // token still says "must change password"
+    showScreen('changePassword');
+    return;
+  }
   if (res.status === 404) {
-    showScreen('waiting');
-    setTimeout(checkActiveParticipant, 5000); // poll until admin starts the session
+    // only keep polling while the student is actually on the waiting screen
+    if (!screens.waiting.classList.contains('hidden')) setTimeout(checkActiveParticipant, 5000);
     return;
   }
   const data = await res.json();
@@ -330,12 +467,22 @@ window.addEventListener('i18n:changed', () => {
   if (lastFinalSubmissions) renderFinalResults(lastFinalSubmissions);
 });
 
-// resume flow if the student refreshes mid-exam
-if (token) {
-  try {
-    setIdentity(JSON.parse(localStorage.getItem('tekser_user') || '{}'));
-  } catch {
-    /* ignore */
+// resume flow on refresh: back to where the student was
+async function resume() {
+  const user = storedUser();
+  setIdentity(user);
+  if (user.mustChangePassword) {
+    showScreen('changePassword');
+    return;
   }
-  checkActiveParticipant();
+  try {
+    const res = await fetch(`${API}/me/active-participant`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 403) return showScreen('changePassword');
+    if (res.ok) return startExamUi(await res.json());
+  } catch {
+    /* fall through to dashboard */
+  }
+  enterDashboard();
 }
+
+if (token) resume();

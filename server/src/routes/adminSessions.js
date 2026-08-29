@@ -53,28 +53,20 @@ router.post('/:id/participants', async (req, res) => {
   res.status(201).json(added);
 });
 
-// The big red button.
+// The big red button. Flips the session to running and reveals the join code —
+// it does NOT provision anyone. Each student provisions themselves when they
+// submit the join code (POST /me/join). A student whose join-time provision
+// errored just re-submits the code from their dashboard — no admin re-provision.
 router.post('/:id/start', async (req, res) => {
   const session = await Session.findById(req.params.id);
   if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
 
   if (session.status === 'running') {
-    const participants = await Session.listParticipants(session.id);
-    const stuck = participants.filter(
-      (p) => !['active', 'ending', 'ended', 'destroyed'].includes(p.container_status)
-    );
-    if (stuck.length === 0) {
-      return res.status(400).json({ error: 'Sesi sudah berjalan dan semua peserta aktif' });
-    }
-    // re-provision cuma yang nyangkut, bukan reset semua sesi
-    res.status(202).json({ message: `Re-provisioning ${stuck.length} peserta yang nyangkut`, sessionId: session.id });
-    Promise.all(stuck.map((p) => examService.provisionOne(p, session))).catch((err) =>
-      console.error(`[adminSessions] re-provision failed for ${session.id}`, err)
-    );
-    return;
+    // Idempotent: heal a missing join code (e.g. a half-finished first start) and return it.
+    return res.json(await Session.ensureJoinCode(session.id));
   }
 
-  res.status(202).json({ message: 'Provisioning dimulai', sessionId: session.id });
+  res.status(202).json({ message: 'Sesi dimulai', sessionId: session.id });
   examService.startSession(session.id).catch((err) =>
     console.error(`[adminSessions] startSession failed for ${session.id}`, err)
   );

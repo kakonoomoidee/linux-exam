@@ -89,6 +89,14 @@ ALTER TABLE users     ADD COLUMN IF NOT EXISTS kelas         TEXT;
 ALTER TABLE questions ADD COLUMN IF NOT EXISTS story_text_en TEXT;
 ALTER TABLE questions ADD COLUMN IF NOT EXISTS level         TEXT DEFAULT 'medium'; -- easy | medium | hard
 
+-- Student password (default = NIM, forced change on first login) + session join code.
+-- Additive and idempotent. password_hash already exists (staff use it) and is reused;
+-- existing student rows keep password_hash = NULL and the login path treats that as
+-- "password is the NIM, must change" regardless of the stored flag.
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS join_code            TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_join_code ON sessions(join_code) WHERE join_code IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_cmdlog_participant ON command_logs(participant_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_participant ON submissions(participant_id);
 CREATE INDEX IF NOT EXISTS idx_participants_session ON session_participants(session_id);

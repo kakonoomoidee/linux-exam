@@ -3,7 +3,7 @@ const config = require('../config');
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, nim: user.nim, role: user.role },
+    { id: user.id, nim: user.nim, role: user.role, mustChangePassword: !!user.must_change_password },
     config.jwtSecret,
     { expiresIn: '12h' }
   );
@@ -48,4 +48,21 @@ function requireInstruktur(req, res, next) {
 // Back-compat alias: every route that used requireAdmin wants "any staff".
 const requireAdmin = requireStaff;
 
-module.exports = { signToken, requireAuth, requireAdmin, requireStaff, requireInstruktur };
+// Students whose password is still the default (or a NULL-hash legacy row) must go through
+// the change-password screen before anything else. The endpoint that changes the password
+// mounts ahead of this guard. Staff carry the flag too but are never gated on it.
+function requirePasswordChanged(req, res, next) {
+  if (req.user && req.user.role === 'student' && req.user.mustChangePassword) {
+    return res.status(403).json({ error: 'must_change_password', code: 'MUST_CHANGE_PASSWORD' });
+  }
+  next();
+}
+
+module.exports = {
+  signToken,
+  requireAuth,
+  requireAdmin,
+  requireStaff,
+  requireInstruktur,
+  requirePasswordChanged,
+};
