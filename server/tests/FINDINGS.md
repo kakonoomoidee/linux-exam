@@ -82,3 +82,40 @@ hangs the request.
 
 **Fix direction:** `INSERT ... ON CONFLICT (nim) DO UPDATE SET name =
 COALESCE(users.name, EXCLUDED.name) RETURNING *`.
+
+---
+
+## 6. `public/student/js/app.js` — a 401 from `/me/active-participant` is silently ignored — ✅ FIXED
+
+**Severity: medium.** `resume()` (runs on every page load when `localStorage`
+has a `tekser_token`) and `checkActiveParticipant()` (polls after joining a
+session) both call `GET /api/me/active-participant` and only branched on
+`200` / `403 MUST_CHANGE_PASSWORD` / `404`. A **401** ("Invalid or expired
+token") fell straight through: `resume()` continued to `enterDashboard()` and
+`checkActiveParticipant()` ran `res.json()` → `startExamUi({error: …})`. The
+user landed on the dashboard holding a dead token; every later request 401'd
+until a manual refresh happened to re-read a now-valid token from
+`localStorage`. That's the reported "invalid token right after join, gone
+after refresh" symptom — the token is a stateless JWT (`middleware/auth.js`),
+so joining can't revoke a good one; the token being sent was already stale.
+
+**Fix:** shared `resetToLogin()` helper (wipes `tekser_token` + `tekser_user`,
+reloads — after which `token` is null so `resume()` doesn't re-fire). Both
+functions now do `if (res.status === 401) return resetToLogin();` before any
+other branch. `logout()` reuses the same helper.
+
+**Not covered by an automated test** — there is no frontend/jsdom harness in
+this repo (`testEnvironment: 'node'`) and adding one for a two-line guard isn't
+worth it. Manual scenario:
+
+1. Log in as a student, complete the forced password change, reach the
+   dashboard. Copy the current `localStorage.tekser_token`.
+2. In DevTools console: `localStorage.tekser_token = 'x.y.z'` (any malformed
+   JWT) — or wait out / hand-edit a real token so it's expired.
+3. Reload the page.
+   - **Before:** lands on the dashboard; `GET /api/me/active-participant`
+     shows `401` in the Network tab; "Riwayat Nilai" shows a load error.
+   - **After:** `localStorage` is cleared and the page reloads once to the
+     login screen. No dashboard, no half-rendered state.
+4. Full-flow check (login → change password → join → wait for the post-join
+   poll): completes into the waiting/exam screen with no 401.

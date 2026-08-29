@@ -176,16 +176,24 @@ async function joinSession() {
   }
 }
 
-function logout() {
+// Wipe the stored session and reload to a clean login screen. Used both by the
+// logout button and whenever the server rejects our token (401): reloading
+// drops the stale `token` var, any queued polling timers and a half-started
+// exam UI. After the reload `token` is null so resume() doesn't re-fire.
+function resetToLogin() {
   localStorage.removeItem('tekser_token');
   localStorage.removeItem('tekser_user');
   location.reload();
+}
+function logout() {
+  resetToLogin();
 }
 
 async function checkActiveParticipant() {
   const res = await fetch(`${API}/me/active-participant`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (res.status === 401) return resetToLogin(); // token rejected mid-poll — force a clean re-login
   if (res.status === 403) {
     // token still says "must change password"
     showScreen('changePassword');
@@ -477,6 +485,7 @@ async function resume() {
   }
   try {
     const res = await fetch(`${API}/me/active-participant`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.status === 401) return resetToLogin(); // stale/expired token — don't fall through to the dashboard
     if (res.status === 403) return showScreen('changePassword');
     if (res.ok) return startExamUi(await res.json());
   } catch {
