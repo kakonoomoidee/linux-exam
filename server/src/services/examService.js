@@ -58,7 +58,7 @@ async function endParticipant(participantId) {
   // (or the "10 minutes is up" guarantee) waits on.
   await Session.updateParticipant(participant.id, { container_status: 'ending' });
 
-  const questions = await Question.listForVariantIndex(participant.variant_index);
+  const questions = await Question.listForVariantIndex(participant.variant_index, participant.ucp);
 
   // run any state_check / both questions' final validation before destroying the container
   for (const q of questions) {

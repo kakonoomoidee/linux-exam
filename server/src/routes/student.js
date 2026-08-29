@@ -43,7 +43,7 @@ router.use(requirePasswordChanged);
 /** The active session + question list + live progress for the logged-in student. */
 router.get('/me/active-participant', async (req, res) => {
   const participant = await db.get(
-    `SELECT sp.* FROM session_participants sp
+    `SELECT sp.*, s.ucp FROM session_participants sp
      JOIN sessions s ON s.id = sp.session_id
      WHERE sp.user_id = $1 AND s.status = 'running'
        AND sp.container_status NOT IN ('destroyed', 'ended', 'ending')
@@ -53,7 +53,7 @@ router.get('/me/active-participant', async (req, res) => {
 
   if (!participant) return res.status(404).json({ error: 'Tidak ada sesi aktif' });
 
-  const questions = (await Question.listForVariantIndex(participant.variant_index)).map((q) => ({
+  const questions = (await Question.listForVariantIndex(participant.variant_index, participant.ucp)).map((q) => ({
     id: q.id,
     order_index: q.order_index,
     story_text: q.story_text, // kept for back-compat; = the Indonesian version

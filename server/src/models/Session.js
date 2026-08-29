@@ -2,10 +2,10 @@ const db = require('../db/connection');
 const joinCode = require('../lib/joinCode');
 
 const Session = {
-  create({ name, duration_minutes }) {
+  create({ name, duration_minutes, ucp }) {
     return db.run(
-      "INSERT INTO sessions (name, duration_minutes, status) VALUES ($1, $2, 'pending') RETURNING *",
-      [name, duration_minutes]
+      "INSERT INTO sessions (name, duration_minutes, status, ucp) VALUES ($1, $2, 'pending', $3) RETURNING *",
+      [name, duration_minutes, Number(ucp) === 2 ? 2 : 1]
     );
   },
 
@@ -66,20 +66,34 @@ const Session = {
 
   listParticipants(sessionId) {
     return db.all(
-      `SELECT sp.*, u.nim, u.name, u.kelas
+      `SELECT sp.*, u.nim, u.name, u.kelas, s.ucp
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
+       JOIN sessions s ON s.id = sp.session_id
        WHERE sp.session_id = $1
        ORDER BY u.nim`,
       [sessionId]
     );
   },
 
-  getParticipant(participantId) {
-    return db.get(
-      `SELECT sp.*, u.nim, u.name, u.kelas
+  async listKelasForSession(sessionId) {
+    const rows = await db.all(
+      `SELECT DISTINCT u.kelas
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
+       WHERE sp.session_id = $1 AND u.kelas IS NOT NULL
+       ORDER BY u.kelas`,
+      [sessionId]
+    );
+    return rows.map((r) => r.kelas);
+  },
+
+  getParticipant(participantId) {
+    return db.get(
+      `SELECT sp.*, u.nim, u.name, u.kelas, s.ucp
+       FROM session_participants sp
+       JOIN users u ON u.id = sp.user_id
+       JOIN sessions s ON s.id = sp.session_id
        WHERE sp.id = $1`,
       [participantId]
     );
@@ -87,9 +101,10 @@ const Session = {
 
   findParticipantByToken(token) {
     return db.get(
-      `SELECT sp.*, u.nim, u.name, u.kelas
+      `SELECT sp.*, u.nim, u.name, u.kelas, s.ucp
        FROM session_participants sp
        JOIN users u ON u.id = sp.user_id
+       JOIN sessions s ON s.id = sp.session_id
        WHERE sp.session_token = $1`,
       [token]
     );

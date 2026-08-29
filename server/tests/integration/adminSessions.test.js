@@ -65,7 +65,22 @@ describe('POST /api/admin/sessions/:id/participants', () => {
       .set(auth)
       .send({ nims: ['20220140057'] });
     expect(res.status).toBe(201);
-    expect(res.body[0].variant_index).toBe(7);
+    expect(res.body.added[0].variant_index).toBe(7);
+  });
+
+  test('a row with an invalid kelas is reported in skipped, not added', async () => {
+    const session = await createSession();
+    const res = await request(app)
+      .post(`/api/admin/sessions/${session.id}/participants`)
+      .set(auth)
+      .send({ nims: [{ nim: '20220140058', name: 'X', kelas: 'TI-3A' }, { nim: '20220140059', name: 'Y', kelas: 'c' }] });
+    expect(res.status).toBe(201);
+    expect(res.body.skipped).toHaveLength(1);
+    expect(res.body.skipped[0].nim).toBe('20220140058');
+    expect(res.body.added).toHaveLength(1);
+    const rows = await Session.listParticipants(session.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].kelas).toBe('C'); // 'c' normalized to uppercase
   });
 
   test('adding the same NIM twice does not create a duplicate participant', async () => {
@@ -131,6 +146,19 @@ describe('POST /api/admin/sessions/:id/start', () => {
     await new Promise((r) => setTimeout(r, 150));
     const after = await Session.getParticipant(p.id);
     expect(after.container_status).toBe('not_started'); // never force-provisioned
+  });
+
+  test('an ended session cannot be restarted — 409, status and started_at unchanged', async () => {
+    const startedAt = new Date('2020-01-01T00:00:00Z').toISOString();
+    const session = await createSession({ status: 'ended', started_at: startedAt });
+
+    const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(auth);
+    expect(res.status).toBe(409);
+
+    await new Promise((r) => setTimeout(r, 150));
+    const fresh = await Session.findById(session.id);
+    expect(fresh.status).toBe('ended');
+    expect(new Date(fresh.started_at).toISOString()).toBe(startedAt);
   });
 });
 

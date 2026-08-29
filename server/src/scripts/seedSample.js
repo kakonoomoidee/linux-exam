@@ -1,9 +1,11 @@
 const migrate = require('../db/migrate');
 const Question = require('../models/Question');
 const User = require('../models/User');
+const Session = require('../models/Session');
 
 const sampleQuestions = [
   {
+    ucp: 1,
     variant_index: 5,
     order_index: 1,
     story_text:
@@ -16,6 +18,7 @@ const sampleQuestions = [
     accepted_patterns: ['^cat\\s+mahasiswa\\.txt$', '^less\\s+mahasiswa\\.txt$', '^more\\s+mahasiswa\\.txt$'],
   },
   {
+    ucp: 1,
     variant_index: 5,
     order_index: 2,
     story_text: 'Buat folder baru bernama "laporan" di direktori kerja kamu saat ini.',
@@ -27,8 +30,11 @@ const sampleQuestions = [
     state_checker_script: 'test -d ~/laporan && echo PASS || echo FAIL',
   },
   {
+    // UCP 2 bank — same variant + order_index as the UCP 1 question above; the
+    // (variant_id, ucp, order_index) unique key keeps them distinct.
+    ucp: 2,
     variant_index: 5,
-    order_index: 3,
+    order_index: 1,
     story_text: 'Ubah permission file "mahasiswa.txt" menjadi hanya bisa dibaca oleh owner (600).',
     story_text_en: 'Change the permission of "mahasiswa.txt" so that only the owner can read it (600).',
     point: 1,
@@ -41,8 +47,8 @@ const sampleQuestions = [
 ];
 
 const sampleStudents = [
-  { nim: '20220140055', name: 'Budi Santoso', kelas: 'TI-3A' },
-  { nim: '20220140056', name: 'Siti Rahma', kelas: 'TI-3B' },
+  { nim: '20220140055', name: 'Budi Santoso', kelas: 'A' },
+  { nim: '20220140056', name: 'Siti Rahma', kelas: 'B' },
 ];
 
 (async () => {
@@ -65,7 +71,12 @@ const sampleStudents = [
 
   // --- sample questions for variant 5 only, so the flow is testable end-to-end ---
   for (const q of sampleQuestions) await Question.create(q);
-  console.log(`[seed] ${sampleQuestions.length} sample questions inserted for variant 5`);
+  console.log(`[seed] ${sampleQuestions.length} sample questions inserted for variant 5 (UCP 1 & UCP 2)`);
+
+  // --- one pending session per UCP so the UCP filtering is exercisable ---
+  await Session.create({ name: 'UTS Praktikum — UCP 1', duration_minutes: 15, ucp: 1 });
+  await Session.create({ name: 'UTS Praktikum — UCP 2', duration_minutes: 15, ucp: 2 });
+  console.log('[seed] 2 pending sessions inserted (one UCP 1, one UCP 2)');
 
   console.log('[seed] done. Log in as a student with nim=20220140055 and password=20220140055 (you will be asked to change it).');
   process.exit(0);

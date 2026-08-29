@@ -9,12 +9,14 @@
     <div class="flex flex-wrap gap-2 items-center mb-4">
       <select id="grades-session-select" class="field w-auto min-w-[220px]"></select>
       <button id="grades-load-btn" class="btn btn-primary btn-sm" data-i18n="admin.showBtn">Tampilkan</button>
-      <button id="grades-transcript-btn" class="btn btn-ghost btn-sm" data-i18n="admin.sessionTranscript">Transkrip Sesi</button>
+      <button id="grades-transcript-btn" class="btn btn-ghost btn-sm" data-i18n="admin.openTranscript"
+        aria-label="Transkrip Sesi" title="Transkrip Sesi">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+      </button>
       <a id="grades-export-csv-link" href="#" download
         class="text-[color:var(--accent-hover)] hover:underline text-sm ml-auto"
         data-i18n="admin.exportCsv">Export CSV Nilai</a>
     </div>
     <div id="grades-table"></div>
-    <div id="grades-transcript" class="hidden mt-6 border-t border-[color:var(--border)] pt-4"></div>
   </div>
 </section>

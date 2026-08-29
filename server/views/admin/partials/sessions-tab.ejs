@@ -7,7 +7,7 @@
 
   <div class="card">
     <div class="card-title" data-i18n="admin.createSessionHeading">Buat Sesi Baru</div>
-    <div class="grid sm:grid-cols-[1fr_180px] gap-3">
+    <div class="grid sm:grid-cols-[1fr_140px_120px] gap-3">
       <div>
         <label class="label" for="new-session-name" data-i18n="admin.sessionNameLabel">Nama sesi</label>
         <input id="new-session-name" class="field" data-i18n-ph="admin.sessionNamePlaceholder"
@@ -17,6 +17,13 @@
         <label class="label" for="new-session-duration" data-i18n="admin.durationPlaceholder">Durasi (menit)</label>
         <input id="new-session-duration" type="number" min="1" class="field"
           data-i18n-ph="admin.durationPlaceholder" placeholder="Durasi (menit)" value="10" />
+      </div>
+      <div>
+        <label class="label" for="new-session-ucp" data-i18n="admin.sessionUcpLabel">UCP</label>
+        <select id="new-session-ucp" class="field" required>
+          <option value="1">UCP 1</option>
+          <option value="2">UCP 2</option>
+        </select>
       </div>
     </div>
     <button id="create-session-btn" class="btn btn-primary btn-sm mt-3"
@@ -40,7 +47,7 @@
     <label class="label" for="participant-nims" data-i18n="admin.addParticipants">Tambah Peserta</label>
     <textarea id="participant-nims" rows="4" class="field font-mono text-sm mb-3"
       data-i18n-ph="admin.nimsPlaceholder"
-      placeholder="Satu per baris — NIM, atau &quot;NIM, Nama, Kelas&quot;&#10;20220140055, Budi Santoso, TI-3A&#10;20220140056, Siti Rahma, TI-3B"></textarea>
+      placeholder="Satu per baris — NIM, atau &quot;NIM, Nama, Kelas&quot; (Kelas = satu huruf A–F)&#10;20220140055, Budi Santoso, A&#10;20220140056, Siti Rahma, B"></textarea>
     <div class="flex flex-wrap gap-2">
       <button id="add-participants-btn" class="btn btn-ghost btn-sm"
         data-i18n="admin.addParticipants">Tambah Peserta</button>

@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
   }
 
   const normalized = evaluator.normalizeCommand(cmd);
-  const questions = await Question.listForVariantIndex(participant.variant_index);
+  const questions = await Question.listForVariantIndex(participant.variant_index, participant.ucp);
   const solvedRows = await db.all(
     `SELECT question_id FROM submissions WHERE participant_id = $1 AND auto_result = 'pass'`,
     [participant.id]

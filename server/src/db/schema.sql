@@ -97,6 +97,13 @@ ALTER TABLE users    ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT N
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS join_code            TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_join_code ON sessions(join_code) WHERE join_code IS NOT NULL;
 
+-- UCP 1 / UCP 2 split for sessions and the question bank. Additive and idempotent;
+-- existing rows land in UCP 1. The kelas CHECK constraint and the questions
+-- (variant_id, ucp, order_index) unique-key swap are applied by migrate.js after
+-- the one-time kelas data normalization (guarded DO blocks — see migrate.js).
+ALTER TABLE sessions  ADD COLUMN IF NOT EXISTS ucp SMALLINT NOT NULL DEFAULT 1; -- 1 | 2
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS ucp SMALLINT NOT NULL DEFAULT 1; -- 1 | 2
+
 CREATE INDEX IF NOT EXISTS idx_cmdlog_participant ON command_logs(participant_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_participant ON submissions(participant_id);
 CREATE INDEX IF NOT EXISTS idx_participants_session ON session_participants(session_id);

@@ -12,6 +12,7 @@ const upload = multer({ dest: path.join(__dirname, '../../data/uploads') });
 
 // Column format for both the Excel import and the downloadable template.
 const TEMPLATE_COLUMNS = [
+  'ucp',
   'order',
   'story_id',
   'story_en',
@@ -23,6 +24,7 @@ const TEMPLATE_COLUMNS = [
 ];
 const TEMPLATE_ROWS = [
   {
+    ucp: 1,
     order: 1,
     story_id: 'Tampilkan isi file "catatan.txt" ke layar.',
     story_en: 'Print the contents of the file "catatan.txt" to the screen.',
@@ -33,6 +35,7 @@ const TEMPLATE_ROWS = [
     state_checker: '',
   },
   {
+    ucp: 1,
     order: 2,
     story_id: 'Buat folder bernama "arsip" di direktori home kamu.',
     story_en: 'Create a folder named "arsip" in your home directory.',
@@ -43,7 +46,8 @@ const TEMPLATE_ROWS = [
     state_checker: 'test -d ~/arsip && echo PASS || echo FAIL',
   },
   {
-    order: 3,
+    ucp: 2,
+    order: 1,
     story_id: 'Ubah permission "rahasia.txt" menjadi hanya bisa dibaca owner (600).',
     story_en: 'Change the permission of "rahasia.txt" so only the owner can read it (600).',
     point: 3,
@@ -56,14 +60,20 @@ const TEMPLATE_ROWS = [
 
 // --- Question bank: read (any staff) ---
 
+// ?ucp=1|2 segments the bank; omitted = every UCP (review dropdown still wants all).
+const ucpParam = (q) => ([1, 2].includes(Number(q)) ? Number(q) : null);
+
 router.get('/variant/:variantIndex', requireStaff, async (req, res) => {
-  res.json(await Question.listForVariantIndex(parseInt(req.params.variantIndex, 10)));
+  res.json(
+    await Question.listForVariantIndex(parseInt(req.params.variantIndex, 10), ucpParam(req.query.ucp))
+  );
 });
 
 // All questions across all variants, for the review dropdown + the Bank Soal list
 router.get('/', requireStaff, async (req, res) => {
+  const ucp = ucpParam(req.query.ucp);
   const all = [];
-  for (let v = 0; v <= 9; v++) all.push(...(await Question.listForVariantIndex(v)));
+  for (let v = 0; v <= 9; v++) all.push(...(await Question.listForVariantIndex(v, ucp)));
   res.json(all);
 });
 
@@ -74,7 +84,7 @@ router.get('/', requireStaff, async (req, res) => {
 router.get('/template.xlsx', requireInstruktur, (req, res) => {
   const ws = XLSX.utils.json_to_sheet(TEMPLATE_ROWS, { header: TEMPLATE_COLUMNS });
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Variant 0');
+  XLSX.utils.book_append_sheet(wb, ws, 'Variant 0'); // ucp column drives the split, not the sheet
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   res.setHeader(
     'Content-Type',
@@ -114,6 +124,7 @@ router.post('/', requireInstruktur, async (req, res) => {
     accepted_patterns: req.body.accepted_patterns,
     state_checker_script: req.body.state_checker_script,
     level: req.body.level,
+    ucp: Number(req.body.ucp) === 2 ? 2 : 1,
   });
   res.status(201).json(created);
 });

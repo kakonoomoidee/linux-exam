@@ -1,0 +1,31 @@
+<section id="tab-students" class="tab-content hidden max-w-5xl mx-auto space-y-5">
+
+  <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="page-title" data-i18n="admin.tabStudents">Mahasiswa</h1>
+      <p class="page-subtitle" data-i18n="admin.studentsSubtitle">Import & kelola data mahasiswa (NIM, nama, kelas).</p>
+    </div>
+    <a id="student-template-link" class="btn btn-ghost btn-sm" download>
+      <span data-i18n="admin.downloadTemplate">Download Template</span>
+    </a>
+  </header>
+
+  <div class="card" id="student-import-card">
+    <div class="card-title" data-i18n="admin.studentsImportHeading">Import Mahasiswa dari Excel</div>
+    <p class="text-[color:var(--text-muted)] text-sm mb-4 leading-relaxed" data-i18n="admin.studentsImportHelp">
+      Kolom: NIM, Nama, Kelas (satu huruf A–F).
+    </p>
+    <input type="file" id="student-file" accept=".xlsx,.xls"
+      class="field text-sm text-[color:var(--text-muted)] mb-4
+        file:mr-3 file:rounded-md file:border-0 file:bg-[color:var(--accent)]
+        file:px-3 file:py-1.5 file:text-white file:text-sm file:font-medium file:cursor-pointer" />
+    <button id="import-students-btn" class="btn btn-primary btn-sm" data-i18n="admin.studentsImportBtn">Import</button>
+    <pre id="import-students-result"
+      class="mt-4 text-sm bg-[color:var(--bg)] border border-[color:var(--border)] p-3 rounded-[var(--radius-sm)] whitespace-pre-wrap empty:hidden"></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title" data-i18n="admin.studentRosterHeading">Daftar Mahasiswa</div>
+    <div id="student-roster-list"></div>
+  </div>
+</section>
