@@ -14,9 +14,12 @@ function emitToParticipant(sessionToken, event, payload) {
 }
 
 /**
- * Admin clicks "Start": provisions containers for every participant in
- * parallel. Each participant's own exam timer starts only once THEIR
- * container is ready (see containerService), not when this function returns.
+ * Provisioning is lazy per-student now: "Start" only flips the session to
+ * running and reveals the join code (see startSession). A participant's
+ * container is provisioned when THEY submit the join code from their dashboard
+ * (routes/student.js -> POST /me/join calls provisionOne for that one student).
+ * Each participant's exam timer still starts only once THEIR container is
+ * ready (see containerService), not at "Start".
  */
 /** Provision one participant's container and start their personal timer. */
 async function provisionOne(participant, session) {
@@ -33,9 +36,8 @@ async function provisionOne(participant, session) {
 }
 
 async function startSession(sessionId) {
-  const session = await Session.markRunning(sessionId);
-  const participants = await Session.listParticipants(sessionId);
-  await Promise.all(participants.map((p) => provisionOne(p, session)));
+  await Session.markRunning(sessionId);
+  await Session.ensureJoinCode(sessionId); // students provision themselves via POST /me/join
   return Session.findById(sessionId);
 }
 

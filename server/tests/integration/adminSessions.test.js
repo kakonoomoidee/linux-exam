@@ -1,7 +1,6 @@
 const request = require('supertest');
 const buildApp = require('../../src/app');
 const Session = require('../../src/models/Session');
-const timerService = require('../../src/services/timerService');
 const { useTestDb } = require('../helpers/db');
 const { createAdmin, createStudent, createSession, createParticipant } = require('../helpers/factory');
 
@@ -13,24 +12,6 @@ beforeEach(async () => {
   auth = { Authorization: `Bearer ${(await createAdmin()).token}` };
 });
 
-// start-session schedules a real 10-minute setTimeout per participant; cancel them
-const scheduled = new Set();
-afterEach(() => {
-  for (const id of scheduled) timerService.cancel(id);
-  scheduled.clear();
-});
-async function trackTimers(sessionId) {
-  for (const p of await Session.listParticipants(sessionId)) scheduled.add(p.id);
-}
-async function waitFor(sessionId, pred, ms = 3000) {
-  const deadline = Date.now() + ms;
-  while (Date.now() < deadline) {
-    const rows = await Session.listParticipants(sessionId);
-    if (pred(rows)) return rows;
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  throw new Error('waitFor timed out; last state: ' + JSON.stringify(await Session.listParticipants(sessionId)));
-}
 
 describe('POST /api/admin/sessions (create)', () => {
   test('valid name -> 201, default duration 10', async () => {
@@ -117,51 +98,39 @@ describe('POST /api/admin/sessions/:id/participants', () => {
 });
 
 describe('POST /api/admin/sessions/:id/start', () => {
-  test('a pending session provisions every participant to active and starts running', async () => {
+  test('a pending session goes running with a join code and provisions nobody (lazy join)', async () => {
     const session = await createSession({ status: 'pending' });
     await request(app).post(`/api/admin/sessions/${session.id}/participants`).set(auth).send({ nims: ['20220140055'] });
 
     const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(auth);
     expect(res.status).toBe(202);
 
-    const rows = await waitFor(session.id, (ps) => ps.every((p) => p.container_status === 'active'));
-    await trackTimers(session.id);
-    expect(rows[0].session_token).toBeTruthy();
-    expect(rows[0].ends_at).toBeTruthy();
-    expect((await Session.findById(session.id)).status).toBe('running');
+    // give any (unwanted) provisioning a chance to happen, then assert it didn't
+    await new Promise((r) => setTimeout(r, 150));
+    const fresh = await Session.findById(session.id);
+    expect(fresh.status).toBe('running');
+    expect(fresh.join_code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/);
+    const rows = await Session.listParticipants(session.id);
+    expect(rows.every((p) => p.container_status === 'not_started')).toBe(true);
   });
 
-  test('starting an already-running session where everyone is active -> 400', async () => {
+  test('starting an already-running session is idempotent — returns the same join code, provisions nobody', async () => {
     const session = await createSession({ status: 'running' });
-    await createParticipant({ session, user: await createStudent({ nim: '20220140055' }), container_status: 'active' });
-
-    const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(auth);
-    expect(res.status).toBe(400);
-  });
-
-  test('re-starting a running session only re-provisions the stuck participants', async () => {
-    const session = await createSession({ status: 'running' });
-    const healthy = await createParticipant({
+    const p = await createParticipant({
       session,
       user: await createStudent({ nim: '20220140055' }),
-      container_status: 'active',
-      container_id: 'mock-container-healthy',
-    });
-    await createParticipant({
-      session,
-      user: await createStudent({ nim: '20220140056' }),
-      container_status: 'error',
+      container_status: 'not_started',
       container_id: null,
     });
+    const first = await Session.ensureJoinCode(session.id);
 
     const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(auth);
-    expect(res.status).toBe(202);
-    expect(res.body.message).toMatch(/[Rr]e-provision/);
+    expect(res.status).toBe(200);
+    expect(res.body.join_code).toBe(first.join_code);
 
-    await waitFor(session.id, (ps) => ps.every((p) => p.container_status === 'active'));
-    await trackTimers(session.id);
-    const healthyAfter = (await Session.listParticipants(session.id)).find((p) => p.id === healthy.id);
-    expect(healthyAfter.container_id).toBe('mock-container-healthy'); // untouched
+    await new Promise((r) => setTimeout(r, 150));
+    const after = await Session.getParticipant(p.id);
+    expect(after.container_status).toBe('not_started'); // never force-provisioned
   });
 });
 

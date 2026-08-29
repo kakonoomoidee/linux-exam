@@ -33,7 +33,10 @@ const User = {
         [...vals, existing.id]
       );
     }
-    return User.create({ nim, name, role: 'student', kelas });
+    // New student: default password IS their NIM, and must_change_password stays true
+    // (schema default). Existing NULL-hash rows are left alone — the login path treats a
+    // NULL hash as "password is the NIM, must change" on its own.
+    return User.create({ nim, name, role: 'student', kelas, password_hash: await hash(String(nim)) });
   },
 
   listAll() {
@@ -50,12 +53,22 @@ const User = {
   async createStaff({ nim, name, password, role }) {
     if (!STAFF_ROLES.includes(role)) throw new Error('role harus instruktur atau asisten');
     if (!nim || !password) throw new Error('nim dan password wajib diisi');
+    // Staff set their own password on creation — the student-only forced-change flag never applies.
     return db.run(
-      `INSERT INTO users (nim, name, role, password_hash) VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (nim, name, role, password_hash, must_change_password) VALUES ($1, $2, $3, $4, false)
        ON CONFLICT (nim) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role,
-                                       password_hash = EXCLUDED.password_hash
+                                       password_hash = EXCLUDED.password_hash,
+                                       must_change_password = false
        RETURNING id, nim, name, role`,
       [nim, name || null, role, await hash(password)]
+    );
+  },
+
+  /** Set a new password and clear the forced-change flag (student change-password flow). */
+  setPassword(id, passwordHash) {
+    return db.run(
+      'UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2 RETURNING *',
+      [passwordHash, id]
     );
   },
 

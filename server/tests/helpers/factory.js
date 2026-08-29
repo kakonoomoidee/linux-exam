@@ -22,12 +22,26 @@ function createAsisten(opts = {}) {
   return createAdmin({ nim: 'asisten', name: 'Asisten', ...opts, role: 'asisten' });
 }
 
-async function createStudent({ nim = '20220140055', name = 'Budi Santoso', kelas = null } = {}) {
+/**
+ * Default is an already-onboarded student: NULL password_hash, must_change_password = false,
+ * so the signed token passes the /api/me/* password-change guard (keeps existing tests green).
+ * Pass `password` to store a real hash, and `must_change_password: true` to exercise the
+ * forced-change flow.
+ */
+async function createStudent({
+  nim = '20220140055',
+  name = 'Budi Santoso',
+  kelas = null,
+  password = null,
+  must_change_password = false,
+} = {}) {
+  const password_hash = password == null ? null : await hash(password);
   const row = await db.run(
-    `INSERT INTO users (nim, name, role, kelas) VALUES ($1, $2, 'student', $3) RETURNING *`,
-    [nim, name, kelas]
+    `INSERT INTO users (nim, name, role, kelas, password_hash, must_change_password)
+     VALUES ($1, $2, 'student', $3, $4, $5) RETURNING *`,
+    [nim, name, kelas, password_hash, must_change_password]
   );
-  return { ...row, token: signToken(row) };
+  return { ...row, password, token: signToken(row) };
 }
 
 async function createSession({ name = 'Test Session', duration_minutes = 10, status = 'pending', started_at } = {}) {

@@ -30,6 +30,13 @@
 
   <div class="card hidden" id="session-detail-panel">
     <h3 id="session-detail-title" class="card-title"></h3>
+
+    <div id="join-code-box" class="hidden mb-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] p-4 text-center">
+      <div class="text-[10px] uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-1"
+        data-i18n="admin.joinCodeLabel">Kode Join</div>
+      <div id="join-code-value" class="text-3xl font-bold font-mono tracking-[0.3em]">------</div>
+    </div>
+
     <label class="label" for="participant-nims" data-i18n="admin.addParticipants">Tambah Peserta</label>
     <textarea id="participant-nims" rows="4" class="field font-mono text-sm mb-3"
       data-i18n-ph="admin.nimsPlaceholder"

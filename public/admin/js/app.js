@@ -56,6 +56,11 @@ document.getElementById('admin-login-btn').addEventListener('click', async () =>
   }
 });
 
+document.getElementById('admin-logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('tekser_admin_token');
+  location.reload();
+});
+
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
