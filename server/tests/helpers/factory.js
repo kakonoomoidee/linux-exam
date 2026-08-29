@@ -44,11 +44,11 @@ async function createStudent({
   return { ...row, password, token: signToken(row) };
 }
 
-async function createSession({ name = 'Test Session', duration_minutes = 10, status = 'pending', started_at } = {}) {
+async function createSession({ name = 'Test Session', duration_minutes = 10, status = 'pending', started_at, ucp = 1 } = {}) {
   return db.run(
-    `INSERT INTO sessions (name, duration_minutes, status, started_at)
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-    [name, duration_minutes, status, started_at || null]
+    `INSERT INTO sessions (name, duration_minutes, status, started_at, ucp)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [name, duration_minutes, status, started_at || null, ucp]
   );
 }
 
@@ -100,6 +100,7 @@ async function createQuestion({
   check_type = 'command_match',
   accepted_patterns = ['^ls$'],
   state_checker_script = null,
+  ucp = 1,
 } = {}) {
   const Question = require('../../src/models/Question');
   return Question.create({
@@ -112,6 +113,7 @@ async function createQuestion({
     check_type,
     accepted_patterns,
     state_checker_script,
+    ucp,
   });
 }
 

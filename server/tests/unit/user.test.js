@@ -54,15 +54,16 @@ describe('User.findOrCreateStudent', () => {
   });
 
   test('stores kelas on create and backfills it onto a kelas-less row', async () => {
-    const created = await User.findOrCreateStudent('20220140010', 'Andi', 'TI-3C');
-    expect(created.kelas).toBe('TI-3C');
+    const created = await User.findOrCreateStudent('20220140010', 'Andi', 'C');
+    expect(created.kelas).toBe('C');
 
     await User.create({ nim: '20220140011', name: 'Rina' });
-    const filled = await User.findOrCreateStudent('20220140011', 'Rina', 'SI-2B');
-    expect(filled.kelas).toBe('SI-2B');
+    const filled = await User.findOrCreateStudent('20220140011', 'Rina', 'B');
+    expect(filled.kelas).toBe('B');
 
-    const kept = await User.findOrCreateStudent('20220140010', 'Andi', 'ZZ-9Z');
-    expect(kept.kelas).toBe('TI-3C'); // not overwritten
+    // an existing kelas is never overwritten (the value passed here is ignored)
+    const kept = await User.findOrCreateStudent('20220140010', 'Andi', 'D');
+    expect(kept.kelas).toBe('C');
   });
 
   test('two sequential calls with the same NIM yield exactly one row', async () => {

@@ -1,4 +1,5 @@
 const qEsc = (s) => window.ui.escapeHtml(String(s == null ? '' : s));
+let bankUcp = 1; // Bank Soal is segmented by UCP; questions carry q.ucp (default 1)
 const Q_LEVEL_TONE = { easy: 'green', medium: 'amber', hard: 'red' };
 const qLevelBadge = (lvl) =>
   window.ui.pill(t('admin.level.' + (lvl || 'medium')) || lvl || 'medium', Q_LEVEL_TONE[lvl] || 'amber');
@@ -38,6 +39,11 @@ function questionFormHtml(q = {}) {
   return `
     <div style="text-align:left;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;gap:8px">
+        <label style="flex:1">${qEsc(t('common.ucp'))}
+          <select id="qf-ucp" class="swal2-select" style="margin:4px 0">
+            ${[1, 2].map((u) => `<option value="${u}"${(q.ucp ?? bankUcp) === u ? ' selected' : ''}>UCP ${u}</option>`).join('')}
+          </select>
+        </label>
         <label style="flex:1">${qEsc(t('common.variant'))}
           <input id="qf-variant" class="swal2-input" style="margin:4px 0" type="number" min="0" max="9" value="${q.variant_index ?? 0}">
         </label>
@@ -90,6 +96,7 @@ function readQuestionForm() {
     .map((s) => s.trim())
     .filter(Boolean);
   return {
+    ucp: parseInt(document.getElementById('qf-ucp').value, 10) === 2 ? 2 : 1,
     variant_index: parseInt(document.getElementById('qf-variant').value, 10) || 0,
     order_index: parseInt(document.getElementById('qf-order').value, 10) || 1,
     story_text: document.getElementById('qf-story-id').value.trim(),
@@ -135,13 +142,28 @@ async function openQuestionForm(existing) {
 
 document.getElementById('add-question-btn').addEventListener('click', () => openQuestionForm(null));
 
+// UCP segment: swap active styling + aria-pressed, reload the (client-filtered) list.
+document.querySelectorAll('#bank-ucp-toggle button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    bankUcp = parseInt(btn.dataset.ucp, 10);
+    document.querySelectorAll('#bank-ucp-toggle button').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('btn-primary', on);
+      b.classList.toggle('btn-ghost', !on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    loadQuestionBank();
+  });
+});
+
 // --- Question bank list (grouped by variant, avatar-less card rows) ---
 async function loadQuestionBank() {
   refreshTemplateLink();
   const box = document.getElementById('question-bank-list');
   if (!box) return;
   box.innerHTML = `<div class="row-list">${Array.from({ length: 3 }, () => '<div class="skeleton skeleton-row"></div>').join('')}</div>`;
-  const questions = await apiFetch('/admin/questions');
+  const all = await apiFetch(`/admin/questions?ucp=${bankUcp}`);
+  const questions = all.filter((q) => (q.ucp ?? 1) === bankUcp); // belt & braces if the param is ignored
   const isInstruktur = window.adminRole === 'instruktur';
 
   if (questions.length === 0) {

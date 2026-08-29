@@ -72,6 +72,7 @@ describe('GET /api/admin/questions/template.xlsx', () => {
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const headers = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0];
     expect(headers).toEqual([
+      'ucp',
       'order',
       'story_id',
       'story_en',

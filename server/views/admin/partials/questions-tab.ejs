@@ -29,7 +29,13 @@
   </div>
 
   <div class="card">
-    <div class="card-title" data-i18n="admin.questionBankHeading">Daftar Soal</div>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <div class="card-title mb-0" data-i18n="admin.questionBankHeading">Daftar Soal</div>
+      <div id="bank-ucp-toggle" class="flex gap-1" role="group" aria-label="UCP">
+        <button type="button" class="btn btn-sm btn-primary" data-ucp="1" aria-pressed="true">UCP 1</button>
+        <button type="button" class="btn btn-sm btn-ghost" data-ucp="2" aria-pressed="false">UCP 2</button>
+      </div>
+    </div>
     <div id="question-bank-list"></div>
   </div>
 </section>

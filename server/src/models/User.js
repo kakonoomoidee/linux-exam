@@ -43,6 +43,26 @@ const User = {
     return db.all('SELECT id, nim, name, role, kelas FROM users ORDER BY nim');
   },
 
+  /** Every student row, for the global roster view. Nulls-last on kelas, then NIM. */
+  listStudents() {
+    return db.all(
+      "SELECT id, nim, name, kelas FROM users WHERE role = 'student' ORDER BY kelas NULLS LAST, nim"
+    );
+  },
+
+  /** Staff correction of a student's name / kelas. Only the keys passed are touched. */
+  async updateStudent(id, fields) {
+    const allowed = ['name', 'kelas'];
+    const keys = Object.keys(fields).filter((k) => allowed.includes(k));
+    if (keys.length === 0) return User.findById(id);
+    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+    const values = keys.map((k) => fields[k]);
+    return db.run(
+      `UPDATE users SET ${setClause} WHERE id = $${keys.length + 1} AND role = 'student' RETURNING *`,
+      [...values, id]
+    );
+  },
+
   /** Instruktur + asisten accounts, for the admin "Staf" panel. */
   listStaff() {
     return db.all(

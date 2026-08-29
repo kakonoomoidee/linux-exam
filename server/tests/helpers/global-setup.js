@@ -25,6 +25,11 @@ module.exports = async function globalSetup() {
   await admin.end();
 
   const { sequelize } = require('../../src/db/connection');
+
+  // Test DB only, and disposable — drop durability for speed. Scoped to this
+  // database, so the dev DB in the same Postgres container is untouched.
+  await sequelize.query(`ALTER DATABASE ${JSON.stringify(dbName).replace(/"/g, '')} SET synchronous_commit = off`);
+
   const migrate = require('../../src/db/migrate');
   await migrate();
   await sequelize.close();

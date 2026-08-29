@@ -1,0 +1,156 @@
+// Global student roster: import, template download, grouped+paginated list, inline edit.
+const stuEsc = (s) => window.ui.escapeHtml(String(s == null ? '' : s));
+const STU_PAGE_SIZE = 50;
+let stuRoster = [];
+let stuPage = 1;
+
+function refreshStudentTemplateLink() {
+  const a = document.getElementById('student-template-link');
+  if (a) a.href = `${API}/admin/students/template.xlsx?token=${adminToken}`;
+}
+document.addEventListener('DOMContentLoaded', refreshStudentTemplateLink);
+
+document.getElementById('import-students-btn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('student-file');
+  if (!fileInput.files.length) return window.ui.alert(t('admin.pickStudentFile'), { icon: 'warning' });
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  const out = document.getElementById('import-students-result');
+  try {
+    const data = await apiFetch('/admin/students/import', { method: 'POST', body: formData });
+    out.textContent =
+      t('admin.studentImportSuccess', { created: data.created, backfilled: data.backfilled, total: data.totalRows }) +
+      '\n' +
+      (data.errors.length
+        ? t('admin.importErrors', { detail: JSON.stringify(data.errors, null, 2) })
+        : t('admin.importAllOk'));
+    fileInput.value = '';
+    loadStudents();
+  } catch (err) {
+    out.textContent = t('common.errorPrefix', { msg: err.message });
+  }
+});
+
+async function loadStudents() {
+  refreshStudentTemplateLink();
+  const box = document.getElementById('student-roster-list');
+  if (!box) return;
+  box.innerHTML = `<div class="row-list">${Array.from({ length: 3 }, () => '<div class="skeleton skeleton-row"></div>').join('')}</div>`;
+  stuRoster = await apiFetch('/admin/students');
+
+  if (stuRoster.length === 0) {
+    box.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      <div class="empty-state__title">${stuEsc(t('admin.studentRosterEmpty'))}</div>
+    </div>`;
+    return;
+  }
+  if ((stuPage - 1) * STU_PAGE_SIZE >= stuRoster.length) stuPage = 1;
+  renderStudents();
+}
+
+function renderStudents() {
+  const box = document.getElementById('student-roster-list');
+  // roster arrives sorted kelas NULLS LAST, then nim (server-side).
+  const pageCount = Math.max(1, Math.ceil(stuRoster.length / STU_PAGE_SIZE));
+  const slice = stuRoster.slice((stuPage - 1) * STU_PAGE_SIZE, stuPage * STU_PAGE_SIZE);
+
+  let html = '';
+  let lastKelas = Symbol('none');
+  for (const s of slice) {
+    if (s.kelas !== lastKelas) {
+      lastKelas = s.kelas;
+      if (html) html += '</div></div>';
+      const label = s.kelas ? `${t('common.kelas')} ${s.kelas}` : t('admin.kelasNone');
+      html += `<div class="mb-5"><div class="section-label mb-2">${stuEsc(label)}</div><div class="row-list">`;
+    }
+    html += studentRow(s);
+  }
+  if (html) html += '</div></div>';
+  box.innerHTML = html;
+
+  const pager = window.ui.pager({
+    page: stuPage,
+    pageCount,
+    onChange: (p) => {
+      stuPage = p;
+      renderStudents();
+      box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    },
+  });
+  if (pager) box.appendChild(pager);
+
+  box.querySelectorAll('.stu-edit').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const s = stuRoster.find((x) => String(x.id) === btn.dataset.id);
+      openStudentForm(s);
+    })
+  );
+}
+
+function studentRow(s) {
+  return `<div class="card-row">
+    ${window.ui.avatarHtml(s.name || s.nim)}
+    <div class="card-row__identity">
+      <div class="card-row__name">${stuEsc(s.name || '-')}</div>
+      <div class="card-row__meta"><span class="mono">${stuEsc(s.nim)}</span></div>
+    </div>
+    <div class="card-row__aside">
+      ${s.kelas ? window.ui.pill(s.kelas, 'blue') : `<span class="text-[color:var(--text-faint)] text-sm">${stuEsc(t('admin.kelasNone'))}</span>`}
+      <details class="kebab">
+        <summary aria-label="${t('common.actions')}">⋮</summary>
+        <div class="kebab-menu">
+          <button class="kebab-item stu-edit" data-id="${s.id}">${t('common.edit')}</button>
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+async function openStudentForm(s) {
+  const { isConfirmed, value } = await window.Swal.fire({
+    title: t('admin.editStudent'),
+    html: `
+      <div style="text-align:left;display:flex;flex-direction:column;gap:8px">
+        <label>${stuEsc(t('common.nim'))}
+          <input class="swal2-input" style="margin:4px 0" value="${stuEsc(s.nim)}" disabled>
+        </label>
+        <label>${stuEsc(t('common.name'))}
+          <input id="sf-name" class="swal2-input" style="margin:4px 0" value="${stuEsc(s.name || '')}">
+        </label>
+        <label>${stuEsc(t('common.kelas'))}
+          <input id="sf-kelas" class="swal2-input" style="margin:4px 0" maxlength="1" value="${stuEsc(s.kelas || '')}"
+            placeholder="A–F">
+          <small style="color:var(--text-faint)">${stuEsc(t('admin.kelasFieldHelp'))}</small>
+        </label>
+      </div>`,
+    width: 'min(480px, 94vw)',
+    showCancelButton: true,
+    confirmButtonText: t('common.save'),
+    cancelButtonText: t('common.cancel'),
+    customClass: { popup: 'ui-swal-popup', confirmButton: 'ui-swal-confirm', cancelButton: 'ui-swal-cancel' },
+    buttonsStyling: false,
+    focusConfirm: false,
+    preConfirm: () => {
+      const kelas = document.getElementById('sf-kelas').value.trim().toUpperCase();
+      if (kelas && !/^[A-F]$/.test(kelas)) {
+        window.Swal.showValidationMessage(t('admin.kelasFieldHelp'));
+        return false;
+      }
+      return { name: document.getElementById('sf-name').value.trim(), kelas };
+    },
+  });
+  if (!isConfirmed) return;
+  await apiFetch(`/admin/students/${s.id}`, { method: 'PATCH', body: JSON.stringify(value) });
+  window.ui.toast(t('admin.studentSaved'), 'success');
+  loadStudents();
+}
+
+window.loadStudents = loadStudents;
+
+window.addEventListener('i18n:changed', () => {
+  if (document.getElementById('student-roster-list') && document.getElementById('student-roster-list').innerHTML) {
+    renderStudents();
+  }
+});

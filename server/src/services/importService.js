@@ -1,5 +1,7 @@
 const XLSX = require('xlsx');
 const Question = require('../models/Question');
+const User = require('../models/User');
+const { normalizeKelas } = require('../lib/kelas');
 
 /**
  * Expected column headers per row (case-insensitive, order doesn't matter):
@@ -49,6 +51,8 @@ function parseWorkbook(filePath) {
         ? String(normalizedRow.level).toLowerCase()
         : 'medium';
 
+      const ucpRaw = String(normalizedRow.ucp ?? '').trim();
+
       allQuestions.push({
         variant_index: variantIndex,
         order_index: parseInt(normalizedRow.order || idx + 1, 10),
@@ -59,6 +63,7 @@ function parseWorkbook(filePath) {
         check_type: normalizedRow.check_type || 'command_match',
         accepted_patterns: patterns,
         state_checker_script: normalizedRow.state_checker || null,
+        ucp: ucpRaw === '' ? 1 : parseInt(ucpRaw, 10),
         _sheet: sheetName,
       });
     });
@@ -85,6 +90,10 @@ async function importFromFile(filePath) {
       errors.push({ ...q, error: 'story_text kosong' });
       continue;
     }
+    if (![1, 2].includes(q.ucp)) {
+      errors.push({ ...q, error: 'ucp harus 1 atau 2' });
+      continue;
+    }
     try {
       created.push(await Question.create(q));
     } catch (err) {
@@ -95,4 +104,48 @@ async function importFromFile(filePath) {
   return { totalRows: questions.length, created: created.length, errors };
 }
 
-module.exports = { parseWorkbook, importFromFile };
+/**
+ * Global student roster import. Columns (case-insensitive): NIM, Nama, Kelas.
+ * Reuses User.findOrCreateStudent — creates missing students (password = NIM,
+ * forced change on first login) and backfills name/kelas ONLY where the current
+ * value is NULL, never overwriting data staff or the student already set.
+ * Invalid kelas (not A–F after normalization) is reported, not silently dropped.
+ */
+async function importStudentsFromFile(filePath) {
+  const workbook = XLSX.readFile(filePath);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
+
+  let created = 0;
+  let backfilled = 0;
+  const errors = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = normalizeRowKeys(rows[i]);
+    const nim = String(r.nim || '').trim();
+    const name = String(r.nama || r.name || '').trim() || null;
+    const kelasRaw = String(r.kelas || '').trim();
+
+    if (!nim) {
+      errors.push({ row: i + 2, error: 'NIM kosong' });
+      continue;
+    }
+    let kelas = null;
+    if (kelasRaw !== '') {
+      kelas = normalizeKelas(kelasRaw);
+      if (kelas === null) {
+        errors.push({ row: i + 2, nim, kelas: kelasRaw, error: 'kelas harus satu huruf A–F' });
+        continue;
+      }
+    }
+
+    const before = await User.findByNim(nim);
+    await User.findOrCreateStudent(nim, name, kelas);
+    if (!before) created++;
+    else if ((name && !before.name) || (kelas && !before.kelas)) backfilled++;
+  }
+
+  return { totalRows: rows.length, created, backfilled, errors };
+}
+
+module.exports = { parseWorkbook, importFromFile, importStudentsFromFile };

@@ -119,6 +119,31 @@
     return `<span class="badge badge-${tone}">${escapeHtml(String(text))}</span>`;
   }
 
+  /**
+   * Prev / "Halaman X / Y" / Next control. Returns an HTMLElement (or null when
+   * there's only one page). onChange(nextPage) fires on a click; the caller
+   * re-renders. Buttons are real <button>s, disabled (not hidden) at the bounds.
+   */
+  function uiPager({ page, pageCount, onChange }) {
+    if (!pageCount || pageCount <= 1) return null;
+    const label = window.i18n ? window.i18n.t('common.pageOf', { page, total: pageCount }) : `${page} / ${pageCount}`;
+    const wrap = document.createElement('div');
+    wrap.className = 'flex items-center justify-center gap-3 mt-4';
+    wrap.innerHTML = `
+      <button type="button" class="btn btn-sm btn-ghost" data-dir="-1" ${page <= 1 ? 'disabled' : ''}
+        aria-label="${window.i18n ? window.i18n.t('common.prevPage') : 'Previous page'}">&#8592;</button>
+      <span class="meta-faint text-sm" aria-live="polite">${escapeHtml(label)}</span>
+      <button type="button" class="btn btn-sm btn-ghost" data-dir="1" ${page >= pageCount ? 'disabled' : ''}
+        aria-label="${window.i18n ? window.i18n.t('common.nextPage') : 'Next page'}">&#8594;</button>`;
+    wrap.querySelectorAll('button[data-dir]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const next = page + Number(b.dataset.dir);
+        if (next >= 1 && next <= pageCount) onChange(next);
+      });
+    });
+    return wrap;
+  }
+
   window.ui = {
     confirm: uiConfirm,
     alert: uiAlert,
@@ -128,6 +153,7 @@
     avatar: uiAvatar,
     avatarHtml: uiAvatarHtml,
     pill: uiPill,
+    pager: uiPager,
     escapeHtml,
   };
 })();

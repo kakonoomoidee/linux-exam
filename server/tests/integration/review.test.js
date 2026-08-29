@@ -129,3 +129,49 @@ describe('GET /api/admin/review/sessions/:id/export.csv', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('Per Kelas review — GET /api/admin/review/sessions/:id/kelas[/:kelas]', () => {
+  test('lists the distinct kelas present in the session', async () => {
+    await createParticipant({ session, user: await createStudent({ nim: '20220140051', kelas: 'A' }), variant_index: 1 });
+    await createParticipant({ session, user: await createStudent({ nim: '20220140052', kelas: 'C' }), variant_index: 2 });
+    await createParticipant({ session, user: await createStudent({ nim: '20220140053', kelas: null }), variant_index: 3 });
+
+    const res = await request(app).get(`/api/admin/review/sessions/${session.id}/kelas`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.kelas).toEqual(['A', 'C']);
+  });
+
+  test('groups every question the kelas was served by variant, with a row per student (no-shows included)', async () => {
+    // session is UCP 1 (factory default). Kelas A spans two variants here.
+    const s1 = await createStudent({ nim: '20220140051', name: 'Andi', kelas: 'A' });
+    const s2 = await createStudent({ nim: '20220140052', name: 'Bella', kelas: 'A' });
+    const p1 = await createParticipant({ session, user: s1, variant_index: 1 });
+    await createParticipant({ session, user: s2, variant_index: 2 });
+
+    const v1q1 = await createQuestion({ variant_index: 1, order_index: 1, point: 2, story_text: 'v1 q1' });
+    await createQuestion({ variant_index: 1, order_index: 2, point: 1, story_text: 'v1 q2' });
+    await createQuestion({ variant_index: 2, order_index: 1, point: 3, story_text: 'v2 q1' });
+    // a UCP 2 question at the same variant/order must not leak in
+    await createQuestion({ variant_index: 1, order_index: 1, ucp: 2, story_text: 'ucp2 leak' });
+
+    await Submission.markAutoResult(p1.id, v1q1.id, { auto_result: 'pass', auto_score: 2 });
+
+    const res = await request(app).get(`/api/admin/review/sessions/${session.id}/kelas/A`).set(auth);
+    expect(res.status).toBe(200);
+
+    const variants = res.body.groups.map((g) => g.variant_index).sort();
+    expect(variants).toEqual([1, 2]);
+
+    const g1 = res.body.groups.find((g) => g.variant_index === 1);
+    expect(g1.questions.map((q) => q.story_text)).toEqual(['v1 q1', 'v1 q2']); // ordered, no ucp2 leak
+    const q1 = g1.questions[0];
+    expect(q1.submissions.map((x) => x.nim)).toEqual(['20220140051']); // only the variant-1 kelas-A student
+    expect(q1.submissions[0].auto_result).toBe('pass');
+
+    // the variant-1 student never attempted q2 -> row still present, null result
+    expect(g1.questions[1].submissions[0].auto_result).toBeNull();
+
+    const g2 = res.body.groups.find((g) => g.variant_index === 2);
+    expect(g2.questions[0].submissions.map((x) => x.nim)).toEqual(['20220140052']);
+  });
+});

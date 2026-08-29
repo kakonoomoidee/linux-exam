@@ -29,8 +29,9 @@ const containerPill = (status) =>
 document.getElementById('create-session-btn').addEventListener('click', async () => {
   const name = document.getElementById('new-session-name').value.trim();
   const duration_minutes = parseInt(document.getElementById('new-session-duration').value, 10) || 10;
+  const ucp = parseInt(document.getElementById('new-session-ucp').value, 10) || 1;
   if (!name) return window.ui.alert(t('admin.sessionNameRequired'), { icon: 'warning' });
-  await apiFetch('/admin/sessions', { method: 'POST', body: JSON.stringify({ name, duration_minutes }) });
+  await apiFetch('/admin/sessions', { method: 'POST', body: JSON.stringify({ name, duration_minutes, ucp }) });
   document.getElementById('new-session-name').value = '';
   loadSessions();
 });
@@ -49,11 +50,19 @@ document.getElementById('add-participants-btn').addEventListener('click', async 
       return { nim, name: name || undefined, kelas: kelas || undefined };
     });
   if (nims.length === 0) return;
-  await apiFetch(`/admin/sessions/${currentSessionId}/participants`, {
+  const { skipped = [] } = await apiFetch(`/admin/sessions/${currentSessionId}/participants`, {
     method: 'POST',
     body: JSON.stringify({ nims }),
   });
   document.getElementById('participant-nims').value = '';
+  if (skipped.length) {
+    window.ui.alert(
+      t('admin.participantsSkipped', { n: skipped.length }) +
+        '\n' +
+        skipped.map((r) => `${r.nim || '?'}: ${r.kelas ?? ''} — ${r.error}`).join('\n'),
+      { icon: 'warning' }
+    );
+  }
   loadParticipants(currentSessionId);
 });
 
@@ -91,6 +100,7 @@ async function loadSessions() {
           </div>
           <div class="card-row__aside">
             ${countdown}
+            ${window.ui.pill(t('admin.ucpN', { n: s.ucp ?? 1 }), 'gray')}
             ${window.ui.pill(t('admin.status.' + s.status), statusTone[s.status] || 'gray')}
             <details class="kebab">
               <summary aria-label="${t('common.actions')}">⋮</summary>
@@ -177,6 +187,10 @@ async function loadParticipants(sessionId) {
       loadParticipants(sessionId);
     });
   });
+
+  list.querySelectorAll('.participant-transcript').forEach((btn) => {
+    btn.addEventListener('click', () => window.openTranscriptModal?.(sessionId, btn.dataset.nim));
+  });
 }
 
 function renderJoinCode(session) {
@@ -220,6 +234,10 @@ function renderParticipantRow(p) {
     <div class="card-row__aside">
       ${lockBadge}
       ${containerPill(p.container_status)}
+      <button class="participant-transcript btn btn-sm btn-ghost" data-nim="${esc(p.nim)}"
+        aria-label="${t('admin.transcriptForNim', { nim: p.nim })}" title="${t('admin.transcriptForNim', { nim: p.nim })}">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
+      </button>
       ${kebab}
     </div>
   </div>`;

@@ -69,6 +69,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
     if (btn.dataset.tab === 'review') window.loadReviewSessionOptions?.();
     if (btn.dataset.tab === 'grades') window.loadGradesSessionOptions?.();
+    if (btn.dataset.tab === 'students') window.loadStudents?.();
     if (btn.dataset.tab === 'questions') window.loadQuestionBank?.();
     if (btn.dataset.tab === 'staff') window.loadStaff?.();
   });

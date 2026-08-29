@@ -12,13 +12,17 @@ const Question = {
     return row ? row.id : null;
   },
 
-  listForVariantIndex(variantIndex) {
+  // ucp: pass 1 or 2 to serve only that UCP's questions (grading + student payload
+  // must always pass the session's ucp). Left null only by the admin "all banks"
+  // listing, which segments client-side.
+  listForVariantIndex(variantIndex, ucp = null) {
     return db.all(
       `SELECT q.* FROM questions q
        JOIN question_variants qv ON qv.id = q.variant_id
        WHERE qv.variant_index = $1
+         AND ($2::smallint IS NULL OR q.ucp = $2)
        ORDER BY q.order_index`,
-      [variantIndex]
+      [variantIndex, ucp == null ? null : Number(ucp)]
     );
   },
 
@@ -36,6 +40,7 @@ const Question = {
     accepted_patterns,
     state_checker_script,
     level,
+    ucp,
   }) {
     let variantId = await Question.variantIdForIndex(variant_index);
     if (!variantId) {
@@ -50,9 +55,9 @@ const Question = {
     return db.run(
       `INSERT INTO questions
          (variant_id, order_index, story_text, story_text_en, point, check_type,
-          accepted_patterns, state_checker_script, level)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (variant_id, order_index) DO UPDATE SET
+          accepted_patterns, state_checker_script, level, ucp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (variant_id, ucp, order_index) DO UPDATE SET
          story_text = EXCLUDED.story_text,
          story_text_en = EXCLUDED.story_text_en,
          point = EXCLUDED.point,
@@ -71,6 +76,7 @@ const Question = {
         JSON.stringify(accepted_patterns || []),
         state_checker_script || null,
         normLevel(level),
+        Number(ucp) === 2 ? 2 : 1,
       ]
     );
   },
@@ -85,6 +91,7 @@ const Question = {
       accepted_patterns: (v) => JSON.stringify(Array.isArray(v) ? v : []),
       state_checker_script: (v) => v || null,
       level: normLevel,
+      ucp: (v) => (Number(v) === 2 ? 2 : 1),
     };
     const keys = Object.keys(fields).filter((k) => k in allowed);
     if (keys.length === 0) return Question.findById(id);
