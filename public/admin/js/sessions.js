@@ -11,11 +11,7 @@ function emptyState(title, hint) {
   </div>`;
 }
 
-document.getElementById('new-session-link').addEventListener('click', (e) => {
-  e.preventDefault();
-  location.href = '/admin/sessions/new';
-});
-
+// "Buat Sesi Baru" is a plain <a href="/admin/sessions/new"> — no JS needed.
 // The "Sesi" tab is now a plain index — creating a session, managing its roster,
 // showing the join code and starting the exam all live on the standalone
 // /admin/sessions/:id page.
