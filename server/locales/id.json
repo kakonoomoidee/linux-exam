@@ -43,6 +43,7 @@
   "student.provisionalTotal": "Total sementara: {total} poin",
   "student.finalRow": "Soal {n}: {mark} ({score} poin)",
   "student.finalPending": "Nilai final menunggu review asisten dosen.",
+  "student.waitingForStart": "Menunggu instruktur memulai ujian...",
   "student.envReady": "Environment kamu sudah siap.",
   "student.startExamNow": "Mulai Ujian",
   "student.timerRunsNote": "Waktu ujian tetap berjalan sejak instruktur memulai — menunda hanya mengurangi waktumu.",

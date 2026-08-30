@@ -43,6 +43,7 @@
   "student.provisionalTotal": "Provisional total: {total} pts",
   "student.finalRow": "Question {n}: {mark} ({score} pts)",
   "student.finalPending": "Final score pending instructor review.",
+  "student.waitingForStart": "Waiting for the instructor to start the exam...",
   "student.envReady": "Your environment is ready.",
   "student.startExamNow": "Start Exam",
   "student.timerRunsNote": "The exam clock has been running since the instructor started — waiting only cuts into your time.",

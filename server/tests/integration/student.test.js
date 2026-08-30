@@ -97,7 +97,9 @@ describe('POST /api/me/join', () => {
     expect(notOnRoster.body).toEqual(wrong.body);
   });
 
-  test('code for an already-ended session -> generic 403 even if on the roster', async () => {
+  test('already-ended session, right code + on the roster -> clear "exam is over" 403', async () => {
+    // Case 5: the caller has proven code + roster, so the real state is not
+    // secret from them — give the clear reason, not the generic rejection.
     const student = await createStudent({ nim: '20220140055' });
     const ended = await createSession({ status: 'ended' });
     const withCode = await Session.ensureJoinCode(ended.id);
@@ -108,21 +110,42 @@ describe('POST /api/me/join', () => {
       .set(bearer(student))
       .send({ code: withCode.join_code });
     expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/Waktu ujian sudah berakhir/);
   });
 
-  test('code exists but the session is still pending (not started) -> generic 403', async () => {
-    // join codes are minted at Session.create() now, so a code can be valid
-    // while the session has not been started — the status='running' gate holds.
+  test('session still pending, right code + on the roster -> 202 pending, NOT a generic 403', async () => {
+    // Case 3: the join code is minted at creation so students can queue up
+    // before the instructor clicks "Mulai Ujian".
     const student = await createStudent({ nim: '20220140055' });
     const pending = await createSession({ status: 'pending' });
     const withCode = await Session.ensureJoinCode(pending.id);
     await createParticipant({ session: pending, user: student, container_status: 'not_started' });
 
+    const wrong = await request(app).post('/api/me/join').set(bearer(student)).send({ code: 'ZZZZZZ' });
     const res = await request(app)
       .post('/api/me/join')
       .set(bearer(student))
       .send({ code: withCode.join_code });
-    expect(res.status).toBe(403);
+
+    expect(res.status).toBe(202);
+    expect(res.body.status).toBe('pending');
+    expect(res.body).not.toEqual(wrong.body); // distinguishable from a bad code
+  });
+
+  test('SECURITY: session pending but caller NOT on the roster -> identical generic 403 to a wrong code', async () => {
+    const student = await createStudent({ nim: '20220140055' });
+    const pending = await createSession({ status: 'pending' });
+    const withCode = await Session.ensureJoinCode(pending.id);
+    // student is NOT added as a participant
+
+    const wrong = await request(app).post('/api/me/join').set(bearer(student)).send({ code: 'ZZZZZZ' });
+    const notOnRoster = await request(app)
+      .post('/api/me/join')
+      .set(bearer(student))
+      .send({ code: withCode.join_code });
+
+    expect(notOnRoster.status).toBe(wrong.status);
+    expect(notOnRoster.body).toEqual(wrong.body);
   });
 
   test('running session whose session-wide deadline has passed -> 403 "Waktu ujian sudah berakhir"', async () => {

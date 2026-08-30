@@ -84,16 +84,25 @@ router.get('/me/active-participant', async (req, res) => {
 });
 
 /**
- * Join a running session with its join code. Two checks, one indistinguishable
- * rejection: the code must match a running session AND the caller's NIM must be
- * on that session's roster. Wrong code, not-on-roster and already-ended all look
- * identical so nobody can fish for valid codes.
+ * Join a session with its join code. Response taxonomy, in order (order matters
+ * for the anti-fishing property):
+ *   1. no session has that code            -> generic 403
+ *   2. code ok but caller not on roster    -> generic 403, byte-identical to (1)
+ *      (1 & 2 must stay indistinguishable so nobody can probe for valid codes
+ *       or for which NIMs are enrolled)
+ *   3. code + roster ok, status 'pending'  -> 202 { status: 'pending' } — the
+ *      code is minted at creation so students can queue up before "Mulai Ujian"
+ *   4. code + roster ok, status 'running'  -> the atomic claim + provisioning
+ *   5. code + roster ok, exam over (ended, or running past the session-wide
+ *      deadline)                            -> 403 "Waktu ujian sudah berakhir"
+ * Cases 3 & 5 only reveal the real state to a caller who has already proven
+ * both the (unguessable) code and roster membership, so they leak nothing.
  */
 router.post('/me/join', async (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
 
   const session = code
-    ? await db.get("SELECT * FROM sessions WHERE join_code = $1 AND status = 'running'", [code])
+    ? await db.get('SELECT * FROM sessions WHERE join_code = $1', [code])
     : null;
   const participant = session
     ? await db.get(
@@ -102,21 +111,28 @@ router.post('/me/join', async (req, res) => {
       )
     : null;
 
+  // Cases 1 & 2.
   if (!session || !participant) {
     return res.status(403).json({ error: 'Kode tidak valid atau kamu tidak terdaftar untuk sesi ini' });
   }
 
-  // The exam clock is session-wide and already running. Once the session
-  // deadline has passed there is no time left to join into — reject with a
-  // clear reason rather than provisioning a container for 0 minutes.
-  if (
+  // Case 5: the exam is over — ended, or still 'running' but past the
+  // session-wide deadline (started_at + duration_minutes).
+  const pastDeadline =
     session.started_at &&
-    Date.now() > new Date(session.started_at).getTime() + session.duration_minutes * 60000
-  ) {
+    Date.now() > new Date(session.started_at).getTime() + session.duration_minutes * 60000;
+  if (session.status === 'ended' || pastDeadline) {
     return res.status(403).json({ error: 'Waktu ujian sudah berakhir' });
   }
 
-  // Atomically claim this participant for provisioning BEFORE responding. A second
+  // Case 3: created but not started yet. Hold the student on a waiting screen;
+  // they'll re-poll and get in automatically once "Mulai Ujian" is clicked. No
+  // provisioning here — that stays lazy and only happens for status 'running'.
+  if (session.status !== 'running') {
+    return res.status(202).json({ status: 'pending', message: 'Sesi belum dimulai. Menunggu instruktur memulai ujian.' });
+  }
+
+  // Case 4. Atomically claim this participant for provisioning BEFORE responding. A second
   // fast click / Enter loses the claim here instead of slipping past a
   // check-then-act guard and kicking off a duplicate provision — which would mint
   // a second session_token and leave the browser holding a stale one.

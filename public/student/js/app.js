@@ -8,6 +8,7 @@ let lastExamData = null; // kept so the question panel can re-render on language
 let lastFinalSubmissions = null;
 let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
 let pendingExamData = null; // container is ready; held until the student clicks "Mulai"
+let joinPollTimer = null;   // re-polls /me/join while the session is still 'pending'
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -34,6 +35,7 @@ document.getElementById('change-pw-btn').addEventListener('click', submitPasswor
 document.getElementById('logout-btn').addEventListener('click', logout);
 document.getElementById('join-btn').addEventListener('click', joinSession);
 document.getElementById('waiting-back-btn').addEventListener('click', enterDashboard);
+document.getElementById('waiting-pending-back-btn').addEventListener('click', enterDashboard);
 document.getElementById('start-exam-now-btn').addEventListener('click', () => {
   if (pendingExamData) startExamUi(pendingExamData);
 });
@@ -114,6 +116,7 @@ async function submitPasswordChange() {
 }
 
 function enterDashboard() {
+  clearTimeout(joinPollTimer);
   const user = storedUser();
   showScreen('dashboard');
   document.getElementById('dash-name').textContent = user.name || user.nim || '';
@@ -160,43 +163,87 @@ async function loadHistory() {
 async function joinSession() {
   const input = document.getElementById('join-code-input');
   const code = input.value.trim().toUpperCase();
-  const errorEl = document.getElementById('join-error');
-  errorEl.textContent = '';
+  document.getElementById('join-error').textContent = '';
   if (!code) return;
+  attemptJoin(code, false);
+}
 
+/**
+ * POST /me/join and route on the response taxonomy. Also used to re-poll while
+ * the session is still 'pending' (instructor hasn't clicked "Mulai Ujian") —
+ * `fromPoll` keeps a transient failure quiet and reports an ended session by
+ * bouncing back to the dashboard instead of writing under the code input.
+ */
+async function attemptJoin(code, fromPoll) {
+  const errorEl = document.getElementById('join-error');
+  let res;
   try {
-    const res = await fetch(`${API}/me/join`, {
+    res = await fetch(`${API}/me/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error);
-    }
-    showWaiting();
-    checkActiveParticipant();
-  } catch (err) {
-    errorEl.textContent = window.i18n.apiError(err.message) || t('student.joinFailed');
+  } catch {
+    if (!fromPoll) errorEl.textContent = t('student.joinFailed');
+    return;
   }
+  const data = await res.json().catch(() => ({}));
+
+  // Case 3: on the roster, right code, but the session hasn't started. Wait
+  // here and re-poll — no need to re-enter the code.
+  if (res.status === 202 && data.status === 'pending') {
+    showWaitingPending();
+    clearTimeout(joinPollTimer);
+    joinPollTimer = setTimeout(() => {
+      if (!screens.waiting.classList.contains('hidden')) attemptJoin(code, true);
+    }, 4000);
+    return;
+  }
+
+  clearTimeout(joinPollTimer);
+
+  if (!res.ok) {
+    // wrong code / not on roster / exam over
+    const msg = window.i18n.apiError(data.error) || t('student.joinFailed');
+    if (fromPoll) {
+      enterDashboard(); // session went pending -> ended while we were waiting
+    }
+    errorEl.textContent = msg;
+    return;
+  }
+
+  // Case 4: running + claimed — provisioning is underway.
+  showWaiting();
+  checkActiveParticipant();
 }
 
-/** Waiting screen in its default (spinner) state. */
+// The waiting screen has four mutually-exclusive inner blocks; each helper
+// shows one and hides the rest.
+function waitingBlock(id) {
+  ['waiting-spinner', 'waiting-error', 'waiting-ready', 'waiting-pending'].forEach((b) =>
+    document.getElementById(b).classList.toggle('hidden', b !== id)
+  );
+}
+
+/** Waiting screen in its default (spinner) state — container provisioning. */
 function showWaiting() {
   showScreen('waiting');
   screens.waiting.setAttribute('aria-busy', 'true');
-  document.getElementById('waiting-spinner').classList.remove('hidden');
-  document.getElementById('waiting-error').classList.add('hidden');
-  document.getElementById('waiting-ready').classList.add('hidden');
+  waitingBlock('waiting-spinner');
+}
+
+/** Session exists and the student is on the roster, but "Mulai Ujian" not clicked yet. */
+function showWaitingPending() {
+  showScreen('waiting');
+  screens.waiting.setAttribute('aria-busy', 'true');
+  waitingBlock('waiting-pending');
 }
 
 /** Provisioning failed server-side — show it, don't leave the student on a dead spinner. */
 function showProvisionError() {
   showScreen('waiting');
   screens.waiting.removeAttribute('aria-busy');
-  document.getElementById('waiting-spinner').classList.add('hidden');
-  document.getElementById('waiting-error').classList.remove('hidden');
-  document.getElementById('waiting-ready').classList.add('hidden');
+  waitingBlock('waiting-error');
 }
 
 /**
@@ -207,9 +254,7 @@ function showProvisionError() {
 function showWaitingReady() {
   showScreen('waiting');
   screens.waiting.removeAttribute('aria-busy');
-  document.getElementById('waiting-spinner').classList.add('hidden');
-  document.getElementById('waiting-error').classList.add('hidden');
-  document.getElementById('waiting-ready').classList.remove('hidden');
+  waitingBlock('waiting-ready');
 }
 
 function logout() {
