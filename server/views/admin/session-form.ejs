@@ -19,7 +19,7 @@
     <%- include('partials/sidebar', { standalone: true, active: 'sessions' }) %>
 
     <main class="main-pane">
-      <div class="max-w-2xl mx-auto space-y-5">
+      <div class="max-w-[min(94%,88rem)] mx-auto space-y-5">
         <a href="/admin" class="inline-block text-sm text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
           data-i18n="admin.backToSessions">← Kembali ke daftar sesi</a>
 
@@ -29,7 +29,7 @@
 
     <!-- create: editable form (create state only — an existing session's metadata
          has no edit endpoint and is shown read-only in #summary-card) -->
-    <div class="card" id="create-card">
+    <div class="card max-w-2xl" id="create-card">
       <div class="grid sm:grid-cols-[1fr_140px_120px] gap-3">
         <div>
           <label class="label" for="f-name" data-i18n="admin.sessionNameLabel">Nama sesi</label>
@@ -59,7 +59,7 @@
     </div>
 
     <!-- manage: join code -->
-    <div class="card hidden" id="joincode-card">
+    <div class="card hidden max-w-2xl" id="joincode-card">
       <div class="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] p-4 text-center">
         <div class="text-[10px] uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-1"
           data-i18n="admin.joinCodeLabel">Kode Join</div>
