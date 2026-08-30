@@ -7,6 +7,8 @@ let timerInterval = null;
 let lastExamData = null; // kept so the question panel can re-render on language change
 let lastFinalSubmissions = null;
 let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
+let pendingExamData = null; // container is ready; held until the student clicks "Mulai"
+let joinPollTimer = null;   // re-polls /me/join while the session is still 'pending'
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -31,7 +33,18 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
+// Idle auto-logout everywhere EXCEPT the active exam screen — sitting and
+// thinking is normal mid-exam, and the server-side clock runs regardless.
+window.ui.idleLogout({
+  onIdle: logout,
+  isSuspended: () => !screens.exam.classList.contains('hidden'),
+});
 document.getElementById('join-btn').addEventListener('click', joinSession);
+document.getElementById('waiting-back-btn').addEventListener('click', enterDashboard);
+document.getElementById('waiting-pending-back-btn').addEventListener('click', enterDashboard);
+document.getElementById('start-exam-now-btn').addEventListener('click', () => {
+  if (pendingExamData) startExamUi(pendingExamData);
+});
 document.getElementById('join-code-input').addEventListener('input', (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
@@ -109,6 +122,7 @@ async function submitPasswordChange() {
 }
 
 function enterDashboard() {
+  clearTimeout(joinPollTimer);
   const user = storedUser();
   showScreen('dashboard');
   document.getElementById('dash-name').textContent = user.name || user.nim || '';
@@ -155,25 +169,107 @@ async function loadHistory() {
 async function joinSession() {
   const input = document.getElementById('join-code-input');
   const code = input.value.trim().toUpperCase();
-  const errorEl = document.getElementById('join-error');
-  errorEl.textContent = '';
+  document.getElementById('join-error').textContent = '';
   if (!code) return;
+  attemptJoin(code, false);
+}
 
+/**
+ * POST /me/join and route on the response taxonomy. Also used to re-poll while
+ * the session is still 'pending' (instructor hasn't clicked "Mulai Ujian") —
+ * `fromPoll` keeps a transient failure quiet and reports an ended session by
+ * bouncing back to the dashboard instead of writing under the code input.
+ */
+function scheduleJoinPoll(code) {
+  clearTimeout(joinPollTimer);
+  joinPollTimer = setTimeout(() => {
+    if (!screens.waiting.classList.contains('hidden')) attemptJoin(code, true);
+  }, 4000);
+}
+
+async function attemptJoin(code, fromPoll) {
+  const errorEl = document.getElementById('join-error');
+  let res;
   try {
-    const res = await fetch(`${API}/me/join`, {
+    res = await fetch(`${API}/me/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error);
-    }
-    showScreen('waiting');
-    checkActiveParticipant();
-  } catch (err) {
-    errorEl.textContent = window.i18n.apiError(err.message) || t('student.joinFailed');
+  } catch {
+    // transient network blip mid-wait — keep the waiting screen and keep polling
+    if (fromPoll) return scheduleJoinPoll(code);
+    errorEl.textContent = t('student.joinFailed');
+    return;
   }
+  const data = await res.json().catch(() => ({}));
+
+  // Case 3: on the roster, right code, but the session hasn't started. Wait
+  // here and re-poll — no need to re-enter the code.
+  if (res.status === 202 && data.status === 'pending') {
+    showWaitingPending();
+    scheduleJoinPoll(code);
+    return;
+  }
+
+  clearTimeout(joinPollTimer);
+
+  if (!res.ok) {
+    // 5xx mid-poll is transient (server restart / brief blip) — keep polling,
+    // don't mistake it for the exam being over.
+    if (fromPoll && res.status >= 500) return scheduleJoinPoll(code);
+    // wrong code / not on roster / exam over
+    const msg = window.i18n.apiError(data.error) || t('student.joinFailed');
+    if (fromPoll) {
+      enterDashboard(); // session went pending -> ended while we were waiting
+    }
+    errorEl.textContent = msg;
+    return;
+  }
+
+  // Case 4: running + claimed — provisioning is underway.
+  showWaiting();
+  checkActiveParticipant();
+}
+
+// The waiting screen has four mutually-exclusive inner blocks; each helper
+// shows one and hides the rest.
+function waitingBlock(id) {
+  ['waiting-spinner', 'waiting-error', 'waiting-ready', 'waiting-pending'].forEach((b) =>
+    document.getElementById(b).classList.toggle('hidden', b !== id)
+  );
+}
+
+/** Waiting screen in its default (spinner) state — container provisioning. */
+function showWaiting() {
+  showScreen('waiting');
+  screens.waiting.setAttribute('aria-busy', 'true');
+  waitingBlock('waiting-spinner');
+}
+
+/** Session exists and the student is on the roster, but "Mulai Ujian" not clicked yet. */
+function showWaitingPending() {
+  showScreen('waiting');
+  screens.waiting.setAttribute('aria-busy', 'true');
+  waitingBlock('waiting-pending');
+}
+
+/** Provisioning failed server-side — show it, don't leave the student on a dead spinner. */
+function showProvisionError() {
+  showScreen('waiting');
+  screens.waiting.removeAttribute('aria-busy');
+  waitingBlock('waiting-error');
+}
+
+/**
+ * Container is ready. The exam clock is already running session-wide, so this
+ * is a pure UI-reveal gate — the student clicks "Mulai" to drop into the
+ * terminal. Shown on every load (incl. a mid-exam refresh) by design.
+ */
+function showWaitingReady() {
+  showScreen('waiting');
+  screens.waiting.removeAttribute('aria-busy');
+  waitingBlock('waiting-ready');
 }
 
 // Wipe the stored session and reload to a clean login screen. Used both by the
@@ -200,12 +296,18 @@ async function checkActiveParticipant() {
     return;
   }
   if (res.status === 404) {
-    // only keep polling while the student is actually on the waiting screen
+    // container still provisioning — keep polling while on the waiting screen
     if (!screens.waiting.classList.contains('hidden')) setTimeout(checkActiveParticipant, 5000);
     return;
   }
   const data = await res.json();
-  startExamUi(data);
+  if (data.participant && data.participant.container_status === 'error') {
+    // a stale poll shouldn't yank a student who already navigated back to the dashboard
+    if (!screens.waiting.classList.contains('hidden')) showProvisionError();
+    return;
+  }
+  pendingExamData = data;
+  showWaitingReady();
 }
 
 // each step is isolated: if the terminal can't init or the socket can't
@@ -487,7 +589,12 @@ async function resume() {
     const res = await fetch(`${API}/me/active-participant`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 401) return resetToLogin(); // stale/expired token — don't fall through to the dashboard
     if (res.status === 403) return showScreen('changePassword');
-    if (res.ok) return startExamUi(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      if (data.participant && data.participant.container_status === 'error') return showProvisionError();
+      pendingExamData = data;
+      return showWaitingReady();
+    }
   } catch {
     /* fall through to dashboard */
   }

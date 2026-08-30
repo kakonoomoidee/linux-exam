@@ -6,55 +6,12 @@
   </header>
 
   <div class="card">
-    <div class="card-title" data-i18n="admin.createSessionHeading">Buat Sesi Baru</div>
-    <div class="grid sm:grid-cols-[1fr_140px_120px] gap-3">
-      <div>
-        <label class="label" for="new-session-name" data-i18n="admin.sessionNameLabel">Nama sesi</label>
-        <input id="new-session-name" class="field" data-i18n-ph="admin.sessionNamePlaceholder"
-          placeholder="Nama sesi (mis. UTS Praktikum Batch 1)" />
-      </div>
-      <div>
-        <label class="label" for="new-session-duration" data-i18n="admin.durationPlaceholder">Durasi (menit)</label>
-        <input id="new-session-duration" type="number" min="1" class="field"
-          data-i18n-ph="admin.durationPlaceholder" placeholder="Durasi (menit)" value="10" />
-      </div>
-      <div>
-        <label class="label" for="new-session-ucp" data-i18n="admin.sessionUcpLabel">UCP</label>
-        <select id="new-session-ucp" class="field" required>
-          <option value="1">UCP 1</option>
-          <option value="2">UCP 2</option>
-        </select>
-      </div>
+    <div class="flex items-center justify-between gap-3 mb-1">
+      <div class="card-title" data-i18n="admin.sessionListHeading">Daftar Sesi</div>
+      <a id="new-session-link" href="/admin/sessions/new" class="btn btn-primary btn-sm"
+        data-i18n="admin.newSessionBtn">Buat Sesi Baru</a>
     </div>
-    <button id="create-session-btn" class="btn btn-primary btn-sm mt-3"
-      data-i18n="admin.createSessionBtn">Buat Sesi</button>
-  </div>
-
-  <div class="card">
-    <div class="card-title" data-i18n="admin.sessionListHeading">Daftar Sesi</div>
     <div id="session-list"></div>
-  </div>
-
-  <div class="card hidden" id="session-detail-panel">
-    <h3 id="session-detail-title" class="card-title"></h3>
-
-    <div id="join-code-box" class="hidden mb-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] p-4 text-center">
-      <div class="text-[10px] uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-1"
-        data-i18n="admin.joinCodeLabel">Kode Join</div>
-      <div id="join-code-value" class="text-3xl font-bold font-mono tracking-[0.3em]">------</div>
-    </div>
-
-    <label class="label" for="participant-nims" data-i18n="admin.addParticipants">Tambah Peserta</label>
-    <textarea id="participant-nims" rows="4" class="field font-mono text-sm mb-3"
-      data-i18n-ph="admin.nimsPlaceholder"
-      placeholder="Satu per baris — NIM, atau &quot;NIM, Nama, Kelas&quot; (Kelas = satu huruf A–F)&#10;20220140055, Budi Santoso, A&#10;20220140056, Siti Rahma, B"></textarea>
-    <div class="flex flex-wrap gap-2">
-      <button id="add-participants-btn" class="btn btn-ghost btn-sm"
-        data-i18n="admin.addParticipants">Tambah Peserta</button>
-      <button id="start-session-btn" class="btn btn-success btn-sm"
-        data-i18n="admin.startSession">▶ Mulai Sesi</button>
-    </div>
-    <div id="participant-list" class="mt-4"></div>
   </div>
 
 </section>

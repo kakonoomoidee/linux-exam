@@ -8,18 +8,18 @@ function connectAdminSocket() {
   });
 
   // anti-cheat: a participant left their exam tab. Show the unlock code big so
-  // the assistant can read it out, and refresh the open participant list.
+  // the assistant can read it out. The live per-participant list lives on the
+  // standalone session page (session-form.js), which refreshes itself on this
+  // same event.
   socket.on('admin:violation', ({ nim, name, code, violationCount }) => {
     window.ui.alert(
       t('admin.violationAlert', { who: name || nim, code, n: violationCount }),
       { icon: 'warning', title: `🔒 ${code}` }
     );
-    if (window.getOpenSessionId?.()) window.loadParticipants(window.getOpenSessionId());
   });
 
   socket.on('admin:unlocked', ({ nim }) => {
     window.ui.toast(t('admin.unlockedToast', { nim }), 'success');
-    if (window.getOpenSessionId?.()) window.loadParticipants(window.getOpenSessionId());
   });
 }
 window.connectAdminSocket = connectAdminSocket;

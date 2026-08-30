@@ -2,11 +2,15 @@ const db = require('../db/connection');
 const joinCode = require('../lib/joinCode');
 
 const Session = {
-  create({ name, duration_minutes, ucp }) {
-    return db.run(
+  async create({ name, duration_minutes, ucp }) {
+    const row = await db.run(
       "INSERT INTO sessions (name, duration_minutes, status, ucp) VALUES ($1, $2, 'pending', $3) RETURNING *",
       [name, duration_minutes, Number(ucp) === 2 ? 2 : 1]
     );
+    // Mint the join code up front so the instructor sees it the moment the
+    // session exists. It's inert until "Mulai Ujian" flips status to 'running'
+    // (POST /me/join matches join_code AND status = 'running' in one query).
+    return Session.ensureJoinCode(row.id);
   },
 
   findById(id) {
@@ -15,6 +19,10 @@ const Session = {
 
   listAll() {
     return db.all('SELECT * FROM sessions ORDER BY created_at DESC');
+  },
+
+  listRunning() {
+    return db.all("SELECT * FROM sessions WHERE status = 'running'");
   },
 
   markRunning(id) {
