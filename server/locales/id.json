@@ -97,6 +97,8 @@
   "admin.allCmdsTitle": "Semua command peserta ini selama ujian:",
   "admin.pointsAndType": "{point} poin, {type}",
   "common.cancel": "Batal",
+  "common.showPassword": "Tampilkan password",
+  "common.hidePassword": "Sembunyikan password",
   "admin.tabGrades": "Mahasiswa & Nilai",
   "admin.gradesHeading": "Mahasiswa & Nilai",
   "admin.solved": "Terjawab",

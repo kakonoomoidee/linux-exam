@@ -126,6 +126,8 @@
   "Kode tidak valid atau kamu tidak terdaftar untuk sesi ini": "Invalid code, or you're not registered for this session",
   "Hanya untuk mahasiswa": "Students only",
   "common.cancel": "Cancel",
+  "common.showPassword": "Show password",
+  "common.hidePassword": "Hide password",
   "admin.tabGrades": "Students & Grades",
   "admin.gradesHeading": "Students & Grades",
   "admin.solved": "Solved",
