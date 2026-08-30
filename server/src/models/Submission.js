@@ -92,7 +92,8 @@ const Submission = {
 
   listForParticipant(participantId) {
     return db.all(
-      `SELECT s.*, q.order_index, q.story_text, q.story_text_en, q.point, q.level
+      `SELECT s.*, q.order_index, q.story_text, q.story_text_en, q.point, q.level,
+              q.check_type, q.accepted_patterns
        FROM submissions s
        JOIN questions q ON q.id = s.question_id
        WHERE s.participant_id = $1

@@ -127,11 +127,22 @@ router.post('/sessions/:sessionId/questions/:questionId/bulk-accept-auto', async
   res.json({ updatedCount: pending.length });
 });
 
-/** Per-participant full result (used for final grade export / participant detail view). */
+/**
+ * Per-participant full result: every question this participant worked on, in
+ * order, each enriched with its command log for that question — enough to
+ * review one student's whole exam ("Per Mahasiswa" mode) without a per-question
+ * round trip. Also used for the final grade total.
+ */
 router.get('/participants/:participantId', async (req, res) => {
   const participant = await Session.getParticipant(req.params.participantId);
   if (!participant) return res.status(404).json({ error: 'Peserta tidak ditemukan' });
-  const submissions = await Submission.listForParticipant(participant.id);
+  const base = await Submission.listForParticipant(participant.id);
+  const submissions = await Promise.all(
+    base.map(async (s) => ({
+      ...s,
+      command_log: await CommandLog.listForParticipantQuestion(participant.id, s.question_id),
+    }))
+  );
   const total = submissions.reduce(
     (sum, s) => sum + (s.final_score !== null && s.final_score !== undefined ? s.final_score : s.auto_score),
     0

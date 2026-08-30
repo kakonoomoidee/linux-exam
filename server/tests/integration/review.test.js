@@ -103,6 +103,56 @@ describe('PATCH /api/admin/review/submissions/:participantId/:questionId', () =>
   });
 });
 
+describe('GET /api/admin/review/participants/:participantId', () => {
+  test('every worked question carries its command log + check_type/accepted_patterns (Per Mahasiswa)', async () => {
+    const participant = await createParticipant({
+      session,
+      user: await createStudent({ nim: '20220140055' }),
+      variant_index: 5,
+    });
+    const q = await createQuestion({
+      variant_index: 5,
+      order_index: 1,
+      point: 4,
+      check_type: 'command_match',
+      accepted_patterns: ['^ls$'],
+    });
+    const win = await CommandLog.create({
+      participant_id: participant.id,
+      question_id: q.id,
+      raw_command: 'ls',
+      normalized_command: 'ls',
+      exit_code: 0,
+    });
+    await Submission.markAutoResult(participant.id, q.id, {
+      auto_result: 'pass',
+      auto_score: 4,
+      matched_command_log_id: win.id,
+    });
+
+    const res = await request(app).get(`/api/admin/review/participants/${participant.id}`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(4);
+    const [sub] = res.body.submissions;
+    expect(sub.check_type).toBe('command_match');
+    expect(JSON.parse(sub.accepted_patterns)).toEqual(['^ls$']);
+    expect(sub.command_log.map((c) => c.raw_command)).toEqual(['ls']);
+    expect(sub.matched_command_log_id).toBe(win.id);
+  });
+
+  test('a student with no submissions comes back with an empty list, not an error', async () => {
+    const participant = await createParticipant({
+      session,
+      user: await createStudent({ nim: '20220140056' }),
+      variant_index: 6,
+    });
+    const res = await request(app).get(`/api/admin/review/participants/${participant.id}`).set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.submissions).toEqual([]);
+    expect(res.body.total).toBe(0);
+  });
+});
+
 describe('GET /api/admin/review/sessions/:id/export.csv', () => {
   test('emits a CSV with the header row and decimal scores from overrides', async () => {
     const participant = await createParticipant({ session, user: await createStudent({ nim: '20220140055', name: 'Budi' }), variant_index: 5 });

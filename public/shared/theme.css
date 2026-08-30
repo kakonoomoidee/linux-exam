@@ -426,6 +426,57 @@ select.field { cursor: pointer; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover { background: var(--surface-2); }
 
+/* ---- Per Kelas review: variant folds, folded pass rows, cross-card search ---- */
+.rk-variant { border: 1px solid var(--border); border-radius: var(--radius); margin: 1rem 0; }
+.rk-variant > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.rk-variant > summary::-webkit-details-marker { display: none; }
+.rk-variant > summary::before { content: "\25B8"; transition: transform var(--dur); }
+.rk-variant[open] > summary::before { transform: rotate(90deg); }
+.rk-variant > .card:first-of-type { margin-top: 0.25rem; }
+
+.rk-summary { font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem; }
+.rk-summary__need { color: var(--warn); font-weight: 600; }
+.rk-summary--clear { color: var(--success); }
+.rk-card-controls { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
+
+/* denser than .data-table's 0.7rem; per-card thead must not stick (many tables stacked) */
+.rk-table thead th { position: static; padding: 0.45rem 0.6rem; }
+.rk-table tbody td { padding: 0.4rem 0.6rem; vertical-align: middle; }
+.rk-table td.rk-nim { font-family: var(--mono); white-space: nowrap; }
+.rk-table td.rk-score { white-space: nowrap; }
+
+.rk-pass { display: none; }
+.rk-qcard.rk-pass-open .rk-pass { display: table-row; }
+.rk-qcard.rk-pass-open .rk-pass-stub { display: none; }
+.rk-pass-stub td {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.rk-pass-stub:hover td { background: var(--surface-2); color: var(--text-muted); }
+
+.rk-needs td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.rk-final-override { color: var(--accent); font-weight: 600; }
+
+#review-table.rk-searching .rk-row:not(.rk-match) { opacity: 0.35; }
+.rk-row.rk-match td { background: var(--success-weak); }
+.rk-row.rk-match td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.rk-search-empty { font-size: 0.8rem; color: var(--danger); align-self: center; }
+
 /* ---- admin tab segmented control (still used inside some panels) ---- */
 .tab-btn {
   padding: 0.5rem 0.95rem;
