@@ -46,11 +46,14 @@ router.get('/me/active-participant', async (req, res) => {
     `SELECT sp.*, s.ucp FROM session_participants sp
      JOIN sessions s ON s.id = sp.session_id
      WHERE sp.user_id = $1 AND s.status = 'running'
-       AND sp.container_status NOT IN ('destroyed', 'ended', 'ending')
+       AND sp.container_status NOT IN ('not_started', 'provisioning', 'destroyed', 'ended', 'ending')
      ORDER BY sp.id DESC LIMIT 1`,
     [req.user.id]
   );
 
+  // Only 'active' (ready to connect) or 'error' (needs a visible failure, not a
+  // silent hang) get past that filter. While a container is still being built
+  // the client just keeps polling — same mechanism as the "waiting" screen.
   if (!participant) return res.status(404).json({ error: 'Tidak ada sesi aktif' });
 
   const questions = (await Question.listForVariantIndex(participant.variant_index, participant.ucp)).map((q) => ({
@@ -96,11 +99,22 @@ router.post('/me/join', async (req, res) => {
     return res.status(403).json({ error: 'Kode tidak valid atau kamu tidak terdaftar untuk sesi ini' });
   }
 
+  // Atomically claim this participant for provisioning BEFORE responding. A second
+  // fast click / Enter loses the claim here instead of slipping past a
+  // check-then-act guard and kicking off a duplicate provision — which would mint
+  // a second session_token and leave the browser holding a stale one.
+  // A fresh row or a previously failed ('error') / torn-down ('destroyed') one is
+  // (re)claimable; 'provisioning'/'active'/'ending'/'ended' is a no-op rejoin.
+  const claimed = await db.run(
+    `UPDATE session_participants SET container_status = 'provisioning'
+     WHERE id = $1 AND container_status NOT IN ('provisioning', 'active', 'ending', 'ended')
+     RETURNING id`,
+    [participant.id]
+  );
+
   res.status(202).json({ ok: true });
 
-  // Rejoin after a provisioned/finished attempt is a no-op; a fresh or previously
-  // failed row gets (re)provisioned here.
-  if (['provisioning', 'active', 'ending', 'ended'].includes(participant.container_status)) return;
+  if (!claimed) return;
   examService
     .provisionOne(await Session.getParticipant(participant.id), session)
     .catch((err) => console.error(`[student] join provision failed for participant ${participant.id}`, err));

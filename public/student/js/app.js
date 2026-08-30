@@ -32,6 +32,7 @@ document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
 document.getElementById('join-btn').addEventListener('click', joinSession);
+document.getElementById('waiting-back-btn').addEventListener('click', enterDashboard);
 document.getElementById('join-code-input').addEventListener('input', (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
@@ -169,11 +170,25 @@ async function joinSession() {
       const data = await res.json().catch(() => ({}));
       throw new Error(data.error);
     }
-    showScreen('waiting');
+    showWaiting();
     checkActiveParticipant();
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('student.joinFailed');
   }
+}
+
+/** Waiting screen in its default (spinner) state. */
+function showWaiting() {
+  showScreen('waiting');
+  document.getElementById('waiting-spinner').classList.remove('hidden');
+  document.getElementById('waiting-error').classList.add('hidden');
+}
+
+/** Provisioning failed server-side — show it, don't leave the student on a dead spinner. */
+function showProvisionError() {
+  showScreen('waiting');
+  document.getElementById('waiting-spinner').classList.add('hidden');
+  document.getElementById('waiting-error').classList.remove('hidden');
 }
 
 function logout() {
@@ -192,11 +207,16 @@ async function checkActiveParticipant() {
     return;
   }
   if (res.status === 404) {
-    // only keep polling while the student is actually on the waiting screen
+    // container still provisioning — keep polling while on the waiting screen
     if (!screens.waiting.classList.contains('hidden')) setTimeout(checkActiveParticipant, 5000);
     return;
   }
   const data = await res.json();
+  if (data.participant && data.participant.container_status === 'error') {
+    // a stale poll shouldn't yank a student who already navigated back to the dashboard
+    if (!screens.waiting.classList.contains('hidden')) showProvisionError();
+    return;
+  }
   startExamUi(data);
 }
 
@@ -478,7 +498,11 @@ async function resume() {
   try {
     const res = await fetch(`${API}/me/active-participant`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 403) return showScreen('changePassword');
-    if (res.ok) return startExamUi(await res.json());
+    if (res.ok) {
+      const data = await res.json();
+      if (data.participant && data.participant.container_status === 'error') return showProvisionError();
+      return startExamUi(data);
+    }
   } catch {
     /* fall through to dashboard */
   }

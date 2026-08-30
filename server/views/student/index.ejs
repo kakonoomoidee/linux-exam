@@ -90,10 +90,20 @@
   <!-- waiting for the session to start -->
   <div id="waiting-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
     <div class="card max-w-sm text-center flex flex-col items-center gap-4">
-      <div class="spinner"></div>
-      <p class="text-[color:var(--text-muted)]" data-i18n="student.waiting">
-        Menunggu asisten dosen memulai sesi...
-      </p>
+      <div id="waiting-spinner" class="flex flex-col items-center gap-4">
+        <div class="spinner"></div>
+        <p class="text-[color:var(--text-muted)]" data-i18n="student.waiting">
+          Menunggu asisten dosen memulai sesi...
+        </p>
+      </div>
+      <div id="waiting-error" class="hidden flex flex-col items-center gap-4">
+        <p class="text-[color:var(--danger)]" data-i18n="student.provisionError">
+          Gagal menyiapkan environment. Coba submit kode lagi atau hubungi asisten.
+        </p>
+        <button id="waiting-back-btn" class="btn btn-primary" data-i18n="student.backToDashboard">
+          Kembali ke Dashboard
+        </button>
+      </div>
     </div>
   </div>
 

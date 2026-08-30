@@ -23,8 +23,11 @@ const CONTAINER_TONE = {
   destroyed: 'gray',
   error: 'red',
 };
-const containerPill = (status) =>
-  window.ui.pill(t('admin.status.' + status) || status, CONTAINER_TONE[status] || 'gray');
+const containerPill = (status) => {
+  const k = 'admin.status.' + status;
+  const label = t(k) === k ? status : t(k); // t() echoes the key on a miss — show the raw status, not "admin.status.x"
+  return window.ui.pill(label, CONTAINER_TONE[status] || 'gray');
+};
 
 document.getElementById('create-session-btn').addEventListener('click', async () => {
   const name = document.getElementById('new-session-name').value.trim();
@@ -205,19 +208,17 @@ function renderJoinCode(session) {
 
 function renderParticipantRow(p) {
   const locked = Boolean(p.locked_at);
+  const violations = p.violation_count
+    ? `<span class="text-xs text-[color:var(--text-faint)]">${t('admin.violationsN', { n: p.violation_count })}</span>`
+    : '';
+  // Locked: 🔒 badge + the unlock code shown large for the assistant to read out
+  // + violation count + a visible Force Unlock button. Not locked: just the count.
   const lockBadge = locked
-    ? window.ui.pill(`🔒 ${t('admin.locked')} · ${p.lock_code || '------'}`, 'amber')
-    : p.violation_count
-    ? window.ui.pill(t('admin.violationsN', { n: p.violation_count }), 'gray')
-    : '';
-  const kebab = locked
-    ? `<details class="kebab">
-         <summary aria-label="${t('common.actions')}">⋮</summary>
-         <div class="kebab-menu">
-           <button class="kebab-item force-unlock-btn" data-id="${p.id}">${t('admin.forceUnlock')}</button>
-         </div>
-       </details>`
-    : '';
+    ? `${window.ui.pill(`🔒 ${t('admin.locked')}`, 'amber')}
+       <span class="lock-code">${esc(p.lock_code || '------')}</span>
+       ${violations}
+       <button class="force-unlock-btn btn btn-sm btn-ghost" data-id="${p.id}">${t('admin.forceUnlock')}</button>`
+    : violations;
   const meta = [
     `<span class="mono">${esc(p.nim)}</span>`,
     `<span>${t('common.variant')} ${p.variant_index}</span>`,
@@ -238,7 +239,6 @@ function renderParticipantRow(p) {
         aria-label="${t('admin.transcriptForNim', { nim: p.nim })}" title="${t('admin.transcriptForNim', { nim: p.nim })}">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
       </button>
-      ${kebab}
     </div>
   </div>`;
 }
