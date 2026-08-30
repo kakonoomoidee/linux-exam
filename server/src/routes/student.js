@@ -43,7 +43,8 @@ router.use(requirePasswordChanged);
 /** The active session + question list + live progress for the logged-in student. */
 router.get('/me/active-participant', async (req, res) => {
   const participant = await db.get(
-    `SELECT sp.*, s.ucp FROM session_participants sp
+    `SELECT sp.*, s.ucp, s.started_at AS session_started_at, s.duration_minutes AS session_duration_minutes
+     FROM session_participants sp
      JOIN sessions s ON s.id = sp.session_id
      WHERE sp.user_id = $1 AND s.status = 'running'
        AND sp.container_status NOT IN ('not_started', 'provisioning', 'destroyed', 'ended', 'ending')
@@ -68,25 +69,40 @@ router.get('/me/active-participant', async (req, res) => {
 
   const submissions = await Submission.listForParticipant(participant.id);
 
+  // Session-wide deadline (started_at + duration), same for every participant.
+  const deadline = participant.session_started_at
+    ? new Date(participant.session_started_at).getTime() +
+      participant.session_duration_minutes * 60000
+    : null;
+
   res.json({
     participant,
     questions,
     submissions,
-    remainingMs: participant.ends_at ? timerService.remainingMs(participant.ends_at) : null,
+    remainingMs: deadline ? timerService.remainingMs(deadline) : null,
   });
 });
 
 /**
- * Join a running session with its join code. Two checks, one indistinguishable
- * rejection: the code must match a running session AND the caller's NIM must be
- * on that session's roster. Wrong code, not-on-roster and already-ended all look
- * identical so nobody can fish for valid codes.
+ * Join a session with its join code. Response taxonomy, in order (order matters
+ * for the anti-fishing property):
+ *   1. no session has that code            -> generic 403
+ *   2. code ok but caller not on roster    -> generic 403, byte-identical to (1)
+ *      (1 & 2 must stay indistinguishable so nobody can probe for valid codes
+ *       or for which NIMs are enrolled)
+ *   3. code + roster ok, status 'pending'  -> 202 { status: 'pending' } — the
+ *      code is minted at creation so students can queue up before "Mulai Ujian"
+ *   4. code + roster ok, status 'running'  -> the atomic claim + provisioning
+ *   5. code + roster ok, exam over (ended, or running past the session-wide
+ *      deadline)                            -> 403 "Waktu ujian sudah berakhir"
+ * Cases 3 & 5 only reveal the real state to a caller who has already proven
+ * both the (unguessable) code and roster membership, so they leak nothing.
  */
 router.post('/me/join', async (req, res) => {
   const code = String(req.body.code || '').trim().toUpperCase();
 
   const session = code
-    ? await db.get("SELECT * FROM sessions WHERE join_code = $1 AND status = 'running'", [code])
+    ? await db.get('SELECT * FROM sessions WHERE join_code = $1', [code])
     : null;
   const participant = session
     ? await db.get(
@@ -95,11 +111,28 @@ router.post('/me/join', async (req, res) => {
       )
     : null;
 
+  // Cases 1 & 2.
   if (!session || !participant) {
     return res.status(403).json({ error: 'Kode tidak valid atau kamu tidak terdaftar untuk sesi ini' });
   }
 
-  // Atomically claim this participant for provisioning BEFORE responding. A second
+  // Case 5: the exam is over — ended, or still 'running' but past the
+  // session-wide deadline (started_at + duration_minutes).
+  const pastDeadline =
+    session.started_at &&
+    Date.now() > new Date(session.started_at).getTime() + session.duration_minutes * 60000;
+  if (session.status === 'ended' || pastDeadline) {
+    return res.status(403).json({ error: 'Waktu ujian sudah berakhir' });
+  }
+
+  // Case 3: created but not started yet. Hold the student on a waiting screen;
+  // they'll re-poll and get in automatically once "Mulai Ujian" is clicked. No
+  // provisioning here — that stays lazy and only happens for status 'running'.
+  if (session.status !== 'running') {
+    return res.status(202).json({ status: 'pending', message: 'Sesi belum dimulai. Menunggu instruktur memulai ujian.' });
+  }
+
+  // Case 4. Atomically claim this participant for provisioning BEFORE responding. A second
   // fast click / Enter loses the claim here instead of slipping past a
   // check-then-act guard and kicking off a duplicate provision — which would mint
   // a second session_token and leave the browser holding a stale one.

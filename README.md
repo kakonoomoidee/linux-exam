@@ -9,10 +9,11 @@ dosen kasih nilai parsial (0/25/50/75/100%).
 
 1. Admin bikin sesi, upload daftar NIM peserta. Variant soal (0-9) otomatis
    ditentukan dari digit terakhir NIM.
-2. Admin klik **Start** → tiap peserta dapet container Docker sendiri
-   (isolated, no internet, resource-limited). Timer per-peserta mulai begitu
-   container-nya siap, bukan pas tombol Start ditekan — supaya boot time
-   container gak motong waktu ujian.
+2. Admin klik **Mulai Ujian** → timer sesi mulai jalan (`started_at + durasi`,
+   satu deadline buat semua peserta). Tiap peserta dapet container Docker
+   sendiri (isolated, no internet, resource-limited) pas mereka submit join
+   code. Yang telat join dapet sisa waktu yang lebih dikit — konsekuensi dari
+   "semua ngikutin instruktur".
 3. Mahasiswa ngetik command di terminal browser (xterm.js) yang di-bridge ke
    container mereka lewat WebSocket.
 4. Setiap command yang dieksekusi di container otomatis dikirim ke server
@@ -288,7 +289,10 @@ npm run import-questions -- /path/ke/soal.xlsx
 ## Keputusan desain penting (baca sebelum modif)
 
 - **Timer server-side, bukan client-side** — biar gak bisa dimanipulasi dari
-  browser. Dijadwalkan di `timerService.js`, dipicu begitu container ready.
+  browser. Satu timer per-sesi di `timerService.js`, di-arm pas "Mulai Ujian"
+  (deadline = `session.started_at + duration_minutes`); pas expired, semua
+  peserta yang masih aktif di-`endParticipant` sekaligus. Di-re-arm pas boot
+  buat sesi yang masih `running` (timer in-memory gak survive restart).
 - **Command match butuh `exit_code === 0`** — command yang gagal (termasuk
   typo) gak pernah dapet poin, meskipun teksnya kebetulan mirip pola yang
   diharapkan.
