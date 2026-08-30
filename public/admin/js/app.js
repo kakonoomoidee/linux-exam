@@ -29,10 +29,11 @@ document.getElementById('admin-login-btn').addEventListener('click', async () =>
   }
 });
 
-document.getElementById('admin-logout-btn').addEventListener('click', () => {
+function logout() {
   localStorage.removeItem('tekser_admin_token');
   location.reload();
-});
+}
+document.getElementById('admin-logout-btn').addEventListener('click', logout);
 
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -51,6 +52,7 @@ function boot() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('dashboard-screen').classList.remove('hidden');
   applyRoleVisibility();
+  window.ui.idleLogout({ onIdle: logout });
   window.connectAdminSocket?.();
   window.loadSessions?.();
   // deep link: /admin#questions etc. (used by the sidebar on the standalone

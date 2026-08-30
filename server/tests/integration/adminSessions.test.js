@@ -125,10 +125,9 @@ describe('POST /api/admin/sessions/:id/start', () => {
     await request(app).post(`/api/admin/sessions/${session.id}/participants`).set(auth).send({ nims: ['20220140055'] });
 
     const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(auth);
-    expect(res.status).toBe(202);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('running');
 
-    // give any (unwanted) provisioning a chance to happen, then assert it didn't
-    await new Promise((r) => setTimeout(r, 150));
     const fresh = await Session.findById(session.id);
     expect(fresh.status).toBe('running');
     expect(fresh.join_code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/);

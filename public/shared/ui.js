@@ -427,8 +427,62 @@
     enhanceAllSelects();
   });
 
+  /**
+   * Log the user out after 10 min with no mouse/keyboard/scroll activity, with
+   * a warning modal 1 min before. `onIdle` should reuse the page's existing
+   * logout path. `isSuspended()` (optional) freezes the countdown without
+   * unbinding — used to keep a student from being logged out mid-exam.
+   */
+  function idleLogout({ onIdle, isSuspended = () => false }) {
+    const IDLE_MS = 10 * 60 * 1000;
+    const WARN_MS = 60 * 1000;
+    let warnTimer;
+    let idleTimer;
+    let lastKick = 0;
+    let warning = false;
+
+    function arm() {
+      clearTimeout(warnTimer);
+      clearTimeout(idleTimer);
+      warnTimer = setTimeout(showWarning, IDLE_MS - WARN_MS);
+      idleTimer = setTimeout(() => (isSuspended() ? arm() : onIdle()), IDLE_MS);
+    }
+
+    function kick() {
+      if (warning) return; // the modal owns the decision now
+      if (isSuspended()) return arm(); // keep the timer fresh so it never lapses mid-exam
+      const now = Date.now();
+      if (now - lastKick < 1000) return; // throttle
+      lastKick = now;
+      arm();
+    }
+
+    async function showWarning() {
+      if (isSuspended()) return arm();
+      warning = true;
+      const stay = await uiConfirm(
+        window.i18n ? window.i18n.t('common.idleWarnText') : 'You will be logged out in 1 minute.',
+        {
+          icon: 'warning',
+          title: window.i18n ? window.i18n.t('common.idleWarnTitle') : 'Still there?',
+          confirmText: window.i18n ? window.i18n.t('common.idleStayBtn') : "I'm still here",
+          cancelText: window.i18n ? window.i18n.t('common.logout') : 'Log out',
+        }
+      );
+      warning = false;
+      if (stay) arm();
+      else onIdle();
+    }
+
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach((e) =>
+      document.addEventListener(e, kick, { passive: true })
+    );
+    arm();
+  }
+
   window.ui = {
     confirm: uiConfirm,
+    idleLogout,
     alert: uiAlert,
     alertPre: uiAlertPre,
     toast: uiToast,

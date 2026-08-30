@@ -15,10 +15,12 @@
   let socket = null;
   let countdownInterval = null;
 
-  document.getElementById('admin-logout-btn')?.addEventListener('click', () => {
+  function logout() {
     localStorage.removeItem('tekser_admin_token');
     location.href = '/admin';
-  });
+  }
+  document.getElementById('admin-logout-btn')?.addEventListener('click', logout);
+  window.ui.idleLogout({ onIdle: logout });
 
   // Same role-gating the dashboard applies to the shared sidebar partial.
   document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {

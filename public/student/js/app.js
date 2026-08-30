@@ -33,6 +33,12 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
+// Idle auto-logout everywhere EXCEPT the active exam screen — sitting and
+// thinking is normal mid-exam, and the server-side clock runs regardless.
+window.ui.idleLogout({
+  onIdle: logout,
+  isSuspended: () => !screens.exam.classList.contains('hidden'),
+});
 document.getElementById('join-btn').addEventListener('click', joinSession);
 document.getElementById('waiting-back-btn').addEventListener('click', enterDashboard);
 document.getElementById('waiting-pending-back-btn').addEventListener('click', enterDashboard);
@@ -174,6 +180,13 @@ async function joinSession() {
  * `fromPoll` keeps a transient failure quiet and reports an ended session by
  * bouncing back to the dashboard instead of writing under the code input.
  */
+function scheduleJoinPoll(code) {
+  clearTimeout(joinPollTimer);
+  joinPollTimer = setTimeout(() => {
+    if (!screens.waiting.classList.contains('hidden')) attemptJoin(code, true);
+  }, 4000);
+}
+
 async function attemptJoin(code, fromPoll) {
   const errorEl = document.getElementById('join-error');
   let res;
@@ -184,7 +197,9 @@ async function attemptJoin(code, fromPoll) {
       body: JSON.stringify({ code }),
     });
   } catch {
-    if (!fromPoll) errorEl.textContent = t('student.joinFailed');
+    // transient network blip mid-wait — keep the waiting screen and keep polling
+    if (fromPoll) return scheduleJoinPoll(code);
+    errorEl.textContent = t('student.joinFailed');
     return;
   }
   const data = await res.json().catch(() => ({}));
@@ -193,16 +208,16 @@ async function attemptJoin(code, fromPoll) {
   // here and re-poll — no need to re-enter the code.
   if (res.status === 202 && data.status === 'pending') {
     showWaitingPending();
-    clearTimeout(joinPollTimer);
-    joinPollTimer = setTimeout(() => {
-      if (!screens.waiting.classList.contains('hidden')) attemptJoin(code, true);
-    }, 4000);
+    scheduleJoinPoll(code);
     return;
   }
 
   clearTimeout(joinPollTimer);
 
   if (!res.ok) {
+    // 5xx mid-poll is transient (server restart / brief blip) — keep polling,
+    // don't mistake it for the exam being over.
+    if (fromPoll && res.status >= 500) return scheduleJoinPoll(code);
     // wrong code / not on roster / exam over
     const msg = window.i18n.apiError(data.error) || t('student.joinFailed');
     if (fromPoll) {
