@@ -6,7 +6,6 @@ let term = null;
 let timerInterval = null;
 let lastExamData = null; // kept so the question panel can re-render on language change
 let lastFinalSubmissions = null;
-let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -320,9 +319,9 @@ function connectSocket(sessionToken) {
 
   socket.on('terminal:output', (data) => term.write(data));
   socket.on('terminal:error', (e) => term.writeln('\r\n' + t('common.errorPrefix', { msg: e.message })));
-  term.onData((data) => { if (!examLocked) socket.emit('terminal:input', data); });
+  term.onData((data) => socket.emit('terminal:input', data));
 
-  setupLockdown(socket, sessionToken);
+  setupViolationReporting(socket, sessionToken);
 
   socket.on('exam:score_update', ({ questionId, point, solvedCount, totalQuestions }) => {
     const card = document.getElementById(`q-${questionId}`);
@@ -344,63 +343,25 @@ function showToast(text) {
   window.ui.toast(text, 'success');
 }
 
-// ---- anti-cheat: lockdown on tab-switch ----
-// Detection is best-effort (a browser can't stop OS-level app switching) — this
-// is deterrent + audit trail, not an OS lockdown. See README.
-function setupLockdown(socket, sessionToken) {
-  const overlay = document.getElementById('lock-overlay');
-  const codeInput = document.getElementById('lock-code-input');
-  const errorEl = document.getElementById('lock-error');
-
+// ---- anti-cheat: tab-switch detection (audit only) ----
+// Best-effort: a browser can't see OS-level app switching, and nothing here
+// blocks the student — the terminal stays live. We just report each time the
+// exam tab loses visibility/focus so the dashboard has an audit trail. See README.
+function setupViolationReporting(socket, sessionToken) {
   const examVisible = () => !screens.exam.classList.contains('hidden');
+  let lastReport = 0;
 
-  function lockUi() {
-    if (examLocked) return;
-    examLocked = true;
-    if (term && term.options) term.options.disableStdin = true;
-    overlay.classList.remove('hidden');
-    errorEl.textContent = '';
-    codeInput.value = '';
-    codeInput.focus();
-  }
-
-  function unlockUi() {
-    examLocked = false;
-    if (term && term.options) term.options.disableStdin = false;
-    overlay.classList.add('hidden');
-    errorEl.textContent = '';
-    try { term.focus(); } catch (_) {}
-  }
-
-  // lock the client FIRST (don't wait for the server round-trip), then report it
-  function onStudentLeft() {
-    if (examLocked || !examVisible()) return;
-    lockUi();
+  function report() {
+    if (!examVisible()) return;
+    if (Date.now() - lastReport < 1000) return; // coalesce the blur+visibilitychange pair
+    lastReport = Date.now();
     socket.emit('student:violation', { sessionToken });
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) onStudentLeft();
+    if (document.hidden) report();
   });
-  window.addEventListener('blur', onStudentLeft);
-
-  const submitCode = () => {
-    const code = codeInput.value.trim();
-    if (!code) return;
-    errorEl.textContent = '';
-    socket.emit('student:unlock', { code });
-  };
-  document.getElementById('lock-unlock-btn').addEventListener('click', submitCode);
-  codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitCode(); });
-
-  socket.on('exam:locked', lockUi);
-  socket.on('exam:unlocked', () => {
-    unlockUi();
-    showToast(t('student.unlocked'));
-  });
-  socket.on('exam:unlock_failed', ({ throttled } = {}) => {
-    errorEl.textContent = throttled ? t('student.unlockThrottled') : t('student.unlockWrong');
-  });
+  window.addEventListener('blur', report);
 }
 
 function startTimer(remainingMs) {

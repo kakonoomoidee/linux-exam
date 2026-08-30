@@ -76,11 +76,14 @@ CREATE TABLE IF NOT EXISTS submissions (
   UNIQUE(participant_id, question_id)
 );
 
--- Anti-cheat: lockdown-on-tab-switch. Additive and idempotent — safe to run
--- on an existing production database with data (schema.sql runs on every boot).
-ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS lock_code       TEXT;
-ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS locked_at       TIMESTAMPTZ;
-ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS violation_count INTEGER NOT NULL DEFAULT 0;
+-- Anti-cheat: tab-switch detection is audit trail only (no lock / no unlock
+-- code). violation_count + last_violation_at are the record. lock_code /
+-- locked_at are legacy, kept (dropping them is non-additive) but no longer
+-- written. Additive and idempotent — schema.sql runs on every boot.
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS lock_code        TEXT;
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS locked_at        TIMESTAMPTZ;
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS violation_count  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE session_participants ADD COLUMN IF NOT EXISTS last_violation_at TIMESTAMPTZ;
 
 -- Student "Kelas", bilingual question text, and question difficulty. Additive and
 -- idempotent — safe to run on an existing production database with data.

@@ -138,24 +138,6 @@
 
     <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-2 z-10"
       role="status" aria-live="polite"></div>
-
-    <!-- anti-cheat: covers terminal + questions the instant the student leaves the tab -->
-    <div id="lock-overlay" class="hidden fixed inset-0 z-50 bg-[color:var(--bg)]/95 backdrop-blur-sm
-      flex items-center justify-center p-6">
-      <div class="card w-full max-w-md text-center">
-        <div class="text-4xl mb-3">🔒</div>
-        <h2 class="text-lg font-bold mb-2" data-i18n="student.lockedTitle">Ujian Dikunci</h2>
-        <p class="text-sm text-[color:var(--text-muted)] mb-5" data-i18n="student.lockedBody">
-          Ujian dikunci karena kamu meninggalkan tab. Minta kode dari asisten dosen.
-        </p>
-        <input id="lock-code-input" class="field text-center tracking-[0.3em] font-mono text-lg mb-3"
-          inputmode="numeric" autocomplete="off" maxlength="6"
-          data-i18n-ph="student.unlockCodePlaceholder" placeholder="Kode 6 digit" />
-        <button id="lock-unlock-btn" class="btn btn-primary btn-block"
-          data-i18n="student.unlockBtn">Buka Kunci</button>
-        <p id="lock-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
-      </div>
-    </div>
   </div>
 
   <!-- finished -->

@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const Session = require('../models/Session');
 const examService = require('../services/examService');
-const lockService = require('../services/lockService');
 const registerTerminalHandlers = require('./terminalSocket');
 
 let ioInstance = null;
@@ -32,46 +31,22 @@ function initSockets(httpServer) {
       if (participant.container_status === 'active' && participant.ends_at) {
         socket.emit('exam:ready', { endsAt: participant.ends_at });
       }
-
-      // if they refreshed (or the server restarted) while locked, restore the lock
-      lockService.rehydrate(participant);
-      if (participant.locked_at && participant.lock_code) {
-        socket.emit('exam:locked', {});
-      }
     });
 
-    // --- anti-cheat: client reports the student left the exam tab ---
+    // --- anti-cheat: client reports the student left the exam tab. Detection +
+    //     audit only — the violation is recorded and pushed to the dashboard,
+    //     nothing on the student side is blocked. ---
     socket.on('student:violation', async ({ sessionToken }) => {
       const participant = await Session.findParticipantByToken(sessionToken);
       if (!participant || participant.container_status !== 'active') return;
 
-      const row = await lockService.recordViolation(participant.id);
+      const row = await Session.recordViolation(participant.id);
       io.to('admin-dashboard').emit('admin:violation', {
         participantId: participant.id,
         nim: participant.nim,
         name: participant.name,
-        code: row.lock_code, // code is admin-only — never sent to the student
         violationCount: row.violation_count,
-        timestamp: row.locked_at,
-      });
-      io.to(`participant:${sessionToken}`).emit('exam:locked', {});
-    });
-
-    // --- student types the unlock code the assistant reads out ---
-    socket.on('student:unlock', async ({ code }) => {
-      const participant = socket.data.participant
-        && (await Session.findParticipantByToken(socket.data.participant.session_token));
-      if (!participant) return;
-
-      const result = await lockService.attemptUnlock(participant.id, code);
-      if (!result.ok) {
-        socket.emit('exam:unlock_failed', { throttled: Boolean(result.throttled) });
-        return;
-      }
-      io.to(`participant:${participant.session_token}`).emit('exam:unlocked', {});
-      io.to('admin-dashboard').emit('admin:unlocked', {
-        participantId: participant.id,
-        nim: participant.nim,
+        timestamp: row.last_violation_at,
       });
     });
 

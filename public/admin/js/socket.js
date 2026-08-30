@@ -7,19 +7,10 @@ function connectAdminSocket() {
     console.log(`[live] ${nim} solved ${solvedCount}/${totalQuestions}`);
   });
 
-  // anti-cheat: a participant left their exam tab. Show the unlock code big so
-  // the assistant can read it out, and refresh the open participant list.
-  socket.on('admin:violation', ({ nim, name, code, violationCount }) => {
-    window.ui.alert(
-      t('admin.violationAlert', { who: name || nim, code, n: violationCount }),
-      { icon: 'warning', title: `🔒 ${code}` }
-    );
-    if (window.getOpenSessionId?.()) window.loadParticipants(window.getOpenSessionId());
-  });
-
-  socket.on('admin:unlocked', ({ nim }) => {
-    window.ui.toast(t('admin.unlockedToast', { nim }), 'success');
-    if (window.getOpenSessionId?.()) window.loadParticipants(window.getOpenSessionId());
+  // anti-cheat: a participant left their exam tab. Detection + audit only — a
+  // non-blocking toast; the running count lives on the session page.
+  socket.on('admin:violation', ({ nim, name, violationCount }) => {
+    window.ui.toast(t('admin.violationAlert', { who: name || nim, n: violationCount }), 'warning');
   });
 }
 window.connectAdminSocket = connectAdminSocket;

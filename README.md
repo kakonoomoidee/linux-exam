@@ -136,7 +136,7 @@ npm run test:coverage     # + tabel coverage
 npx jest tests/unit       # subset
 ```
 
-Struktur: `tests/unit/` (evaluator, lockService, User, importService,
+Struktur: `tests/unit/` (evaluator, User, importService,
 containerDrivers) + `tests/integration/` (auth, adminSessions, adminQuestions,
 cmd-log webhook, submit flow, review/grades, lockdown sockets, async-error
 handling). Helper di `tests/helpers/` — `db.js` (`useTestDb()`), `factory.js`
@@ -310,16 +310,16 @@ npm run import-questions -- /path/ke/soal.xlsx
   middleware, jadi tanpa ini `await` yang throw di handler bikin request
   hang selamanya (bukan 500). Dengan shim ini semua async rejection nyampe
   ke `app.use((err,...))` yang balesin `500 { error }` JSON. Jangan dicabut.
-- **Lockdown on tab-switch itu deteksi + deterrent + audit trail, BUKAN
-  lockdown OS-level.** Client dengerin `visibilitychange` + `window.blur`,
-  langsung nutup terminal & soal pas mahasiswa pindah tab / alt-tab, lalu
-  lapor `student:violation`. Server generate kode unlock 6 digit baru tiap
-  pelanggaran (kode lama otomatis invalid), naikin `violation_count`, dan
-  nolak `terminal:input` selama status locked (gak cuma andelin disable di
-  client). Timer server-side **tetep jalan** selama locked — pindah tab gak
-  nambah waktu. Batas: browser gak bisa nyegah app-switching secara fisik,
-  dan mahasiswa yang niat masih bisa pakai device kedua. Asisten lihat kode
-  real-time di tab "Sesi" dan bisa "Buka Paksa".
+- **Tab-switch itu deteksi + audit trail doang, BUKAN lockdown.** Client
+  dengerin `visibilitychange` + `window.blur` dan lapor `student:violation` —
+  gak ada overlay, terminal gak dimatiin, mahasiswa lanjut ngerjain tanpa
+  gangguan. Server naikin `violation_count` + stamp `last_violation_at`, lalu
+  push `admin:violation` (non-blocking toast) ke dashboard; jumlahnya kelihatan
+  di halaman sesi. Gak ada state "locked", gak ada kode unlock, gak ada "Buka
+  Paksa". Kolom `lock_code` / `locked_at` masih ada di schema tapi udah gak
+  dipake. Timer server-side emang selalu jalan — pindah tab gak pernah nambah
+  waktu. Batas: browser gak bisa nyegah app-switching secara fisik, dan
+  mahasiswa yang niat masih bisa pakai device kedua.
 
 ## Yang masih perlu disesuaikan sebelum dipakai ujian beneran
 

@@ -1,4 +1,3 @@
-let currentSessionId = null;
 let sessionCountdownInterval = null;
 
 const esc = (s) => window.ui.escapeHtml(String(s == null ? '' : s));
@@ -12,72 +11,14 @@ function emptyState(title, hint) {
   </div>`;
 }
 
-const CONTAINER_TONE = {
-  active: 'green',
-  running: 'green',
-  ready: 'blue',
-  provisioning: 'amber',
-  not_started: 'gray',
-  ending: 'amber',
-  ended: 'gray',
-  destroyed: 'gray',
-  error: 'red',
-};
-const containerPill = (status) => {
-  const k = 'admin.status.' + status;
-  const label = t(k) === k ? status : t(k); // t() echoes the key on a miss — show the raw status, not "admin.status.x"
-  return window.ui.pill(label, CONTAINER_TONE[status] || 'gray');
-};
-
-document.getElementById('create-session-btn').addEventListener('click', async () => {
-  const name = document.getElementById('new-session-name').value.trim();
-  const duration_minutes = parseInt(document.getElementById('new-session-duration').value, 10) || 10;
-  const ucp = parseInt(document.getElementById('new-session-ucp').value, 10) || 1;
-  if (!name) return window.ui.alert(t('admin.sessionNameRequired'), { icon: 'warning' });
-  await apiFetch('/admin/sessions', { method: 'POST', body: JSON.stringify({ name, duration_minutes, ucp }) });
-  document.getElementById('new-session-name').value = '';
-  loadSessions();
+document.getElementById('new-session-link').addEventListener('click', (e) => {
+  e.preventDefault();
+  location.href = '/admin/sessions/new';
 });
 
-document.getElementById('add-participants-btn').addEventListener('click', async () => {
-  const raw = document.getElementById('participant-nims').value;
-  const nims = raw
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      // "NIM" | "NIM, Nama" | "NIM, Nama, Kelas" (comma / semicolon / tab separated)
-      const [nim, name, ...kelasParts] = line.split(/[,;\t]/).map((x) => x.trim());
-      const kelas = kelasParts.join(',').trim();
-      if (!name && !kelas) return nim;
-      return { nim, name: name || undefined, kelas: kelas || undefined };
-    });
-  if (nims.length === 0) return;
-  const { skipped = [] } = await apiFetch(`/admin/sessions/${currentSessionId}/participants`, {
-    method: 'POST',
-    body: JSON.stringify({ nims }),
-  });
-  document.getElementById('participant-nims').value = '';
-  if (skipped.length) {
-    window.ui.alert(
-      t('admin.participantsSkipped', { n: skipped.length }) +
-        '\n' +
-        skipped.map((r) => `${r.nim || '?'}: ${r.kelas ?? ''} — ${r.error}`).join('\n'),
-      { icon: 'warning' }
-    );
-  }
-  loadParticipants(currentSessionId);
-});
-
-document.getElementById('start-session-btn').addEventListener('click', async () => {
-  const ok = await window.ui.confirm(t('admin.startConfirm'), { icon: 'warning', confirmText: t('admin.startSession') });
-  if (!ok) return;
-  await apiFetch(`/admin/sessions/${currentSessionId}/start`, { method: 'POST' });
-  window.ui.toast(t('admin.sessionStarted'), 'success');
-  loadSessions();
-  loadParticipants(currentSessionId); // reveals the join code
-});
-
+// The "Sesi" tab is now a plain index — creating a session, managing its roster,
+// showing the join code and starting the exam all live on the standalone
+// /admin/sessions/:id page.
 async function loadSessions() {
   const list = document.getElementById('session-list');
   list.innerHTML = `<div class="row-list">${skeletonRows(3)}</div>`;
@@ -119,17 +60,15 @@ async function loadSessions() {
   }
 
   list.querySelectorAll('.session-open, .session-open-menu').forEach((el) => {
-    el.addEventListener('click', () => openSession(el.closest('.session-row').dataset.id, sessions));
+    el.addEventListener('click', () => {
+      location.href = '/admin/sessions/' + el.closest('.session-row').dataset.id;
+    });
   });
   list.querySelectorAll('.session-delete').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const ok = await window.ui.confirm(t('admin.deleteConfirm'), { icon: 'warning', confirmText: t('admin.deleteSession') });
       if (!ok) return;
       await apiFetch(`/admin/sessions/${btn.dataset.id}`, { method: 'DELETE' });
-      if (String(currentSessionId) === btn.dataset.id) {
-        currentSessionId = null;
-        document.getElementById('session-detail-panel').classList.add('hidden');
-      }
       loadSessions();
     });
   });
@@ -161,95 +100,8 @@ function startSessionCountdowns() {
   sessionCountdownInterval = setInterval(tick, 1000);
 }
 
-function openSession(id, sessions) {
-  currentSessionId = id;
-  const session = sessions.find((s) => String(s.id) === String(id));
-  document.getElementById('session-detail-panel').classList.remove('hidden');
-  document.getElementById('session-detail-title').textContent = session.name;
-  loadParticipants(id);
-}
-
-async function loadParticipants(sessionId) {
-  const list = document.getElementById('participant-list');
-  list.innerHTML = `<div class="row-list">${skeletonRows(3)}</div>`;
-  const session = await apiFetch(`/admin/sessions/${sessionId}`);
-  const participants = session.participants || [];
-
-  renderJoinCode(session);
-
-  if (participants.length === 0) {
-    list.innerHTML = emptyState(t('admin.noParticipantsYet'), t('admin.noParticipantsHint'));
-    return;
-  }
-
-  list.innerHTML = `<div class="row-list">${participants.map(renderParticipantRow).join('')}</div>`;
-
-  list.querySelectorAll('.force-unlock-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      await apiFetch(`/admin/review/participants/${btn.dataset.id}/force-unlock`, { method: 'POST' });
-      loadParticipants(sessionId);
-    });
-  });
-
-  list.querySelectorAll('.participant-transcript').forEach((btn) => {
-    btn.addEventListener('click', () => window.openTranscriptModal?.(sessionId, btn.dataset.nim));
-  });
-}
-
-function renderJoinCode(session) {
-  const box = document.getElementById('join-code-box');
-  if (session.status === 'running' && session.join_code) {
-    document.getElementById('join-code-value').textContent = session.join_code;
-    box.classList.remove('hidden');
-  } else {
-    box.classList.add('hidden');
-  }
-}
-
-function renderParticipantRow(p) {
-  const locked = Boolean(p.locked_at);
-  const violations = p.violation_count
-    ? `<span class="text-xs text-[color:var(--text-faint)]">${t('admin.violationsN', { n: p.violation_count })}</span>`
-    : '';
-  // Locked: 🔒 badge + the unlock code shown large for the assistant to read out
-  // + violation count + a visible Force Unlock button. Not locked: just the count.
-  const lockBadge = locked
-    ? `${window.ui.pill(`🔒 ${t('admin.locked')}`, 'amber')}
-       <span class="lock-code">${esc(p.lock_code || '------')}</span>
-       ${violations}
-       <button class="force-unlock-btn btn btn-sm btn-ghost" data-id="${p.id}">${t('admin.forceUnlock')}</button>`
-    : violations;
-  const meta = [
-    `<span class="mono">${esc(p.nim)}</span>`,
-    `<span>${t('common.variant')} ${p.variant_index}</span>`,
-    p.kelas ? `<span>${esc(p.kelas)}</span>` : '',
-  ]
-    .filter(Boolean)
-    .join('');
-  return `<div class="card-row">
-    ${window.ui.avatarHtml(p.name || p.nim)}
-    <div class="card-row__identity">
-      <div class="card-row__name">${esc(p.name || '-')}</div>
-      <div class="card-row__meta">${meta}</div>
-    </div>
-    <div class="card-row__aside">
-      ${lockBadge}
-      ${containerPill(p.container_status)}
-      <button class="participant-transcript btn btn-sm btn-ghost" data-nim="${esc(p.nim)}"
-        aria-label="${t('admin.transcriptForNim', { nim: p.nim })}" title="${t('admin.transcriptForNim', { nim: p.nim })}">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg>
-      </button>
-    </div>
-  </div>`;
-}
-
 window.loadSessions = loadSessions;
-window.loadParticipants = loadParticipants;
-window.getOpenSessionId = () => currentSessionId;
 
 window.addEventListener('i18n:changed', () => {
-  if (!document.getElementById('dashboard-screen').classList.contains('hidden')) {
-    loadSessions();
-    if (currentSessionId) loadParticipants(currentSessionId);
-  }
+  if (!document.getElementById('dashboard-screen').classList.contains('hidden')) loadSessions();
 });

@@ -110,20 +110,13 @@ const Session = {
     );
   },
 
-  // Anti-cheat lock: new unlock code on every violation (old code becomes
-  // invalid), violation_count bumped atomically in the same statement.
-  recordViolation(participantId, code) {
+  // Anti-cheat: tab-switch detection is audit-only. Bump the count and stamp the
+  // time atomically; nothing on the student side is locked.
+  recordViolation(participantId) {
     return db.run(
       `UPDATE session_participants
-       SET lock_code = $1, locked_at = now(), violation_count = violation_count + 1
-       WHERE id = $2 RETURNING *`,
-      [code, participantId]
-    );
-  },
-
-  clearLock(participantId) {
-    return db.run(
-      'UPDATE session_participants SET lock_code = NULL, locked_at = NULL WHERE id = $1 RETURNING *',
+       SET violation_count = violation_count + 1, last_violation_at = now()
+       WHERE id = $1 RETURNING *`,
       [participantId]
     );
   },
