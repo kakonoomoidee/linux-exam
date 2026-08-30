@@ -297,6 +297,15 @@ select.field { cursor: pointer; }
 .badge-blue  { background: var(--accent-weak); color: var(--accent-hover); border-color: transparent; }
 .badge-gray  { background: var(--surface-2); color: var(--text-faint); border-color: transparent; }
 
+/* anti-cheat: unlock code shown large in the participant row so an assistant can read it out */
+.lock-code {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--warn);
+}
+
 /* ---- avatar (initials, colour hashed from name/NIM in ui.js) ---- */
 .avatar {
   display: inline-flex;

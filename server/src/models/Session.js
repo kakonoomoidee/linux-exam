@@ -21,6 +21,10 @@ const Session = {
     return db.all('SELECT * FROM sessions ORDER BY created_at DESC');
   },
 
+  listRunning() {
+    return db.all("SELECT * FROM sessions WHERE status = 'running'");
+  },
+
   markRunning(id) {
     return db.run(
       "UPDATE sessions SET status = 'running', started_at = now() WHERE id = $1 RETURNING *",
@@ -114,13 +118,20 @@ const Session = {
     );
   },
 
-  // Anti-cheat: tab-switch detection is audit-only. Bump the count and stamp the
-  // time atomically; nothing on the student side is locked.
-  recordViolation(participantId) {
+  // Anti-cheat lock: new unlock code on every violation (old code becomes
+  // invalid), violation_count bumped atomically in the same statement.
+  recordViolation(participantId, code) {
     return db.run(
       `UPDATE session_participants
-       SET violation_count = violation_count + 1, last_violation_at = now()
-       WHERE id = $1 RETURNING *`,
+       SET lock_code = $1, locked_at = now(), violation_count = violation_count + 1
+       WHERE id = $2 RETURNING *`,
+      [code, participantId]
+    );
+  },
+
+  clearLock(participantId) {
+    return db.run(
+      'UPDATE session_participants SET lock_code = NULL, locked_at = NULL WHERE id = $1 RETURNING *',
       [participantId]
     );
   },

@@ -43,7 +43,8 @@ router.use(requirePasswordChanged);
 /** The active session + question list + live progress for the logged-in student. */
 router.get('/me/active-participant', async (req, res) => {
   const participant = await db.get(
-    `SELECT sp.*, s.ucp FROM session_participants sp
+    `SELECT sp.*, s.ucp, s.started_at AS session_started_at, s.duration_minutes AS session_duration_minutes
+     FROM session_participants sp
      JOIN sessions s ON s.id = sp.session_id
      WHERE sp.user_id = $1 AND s.status = 'running'
        AND sp.container_status NOT IN ('not_started', 'provisioning', 'destroyed', 'ended', 'ending')
@@ -68,11 +69,17 @@ router.get('/me/active-participant', async (req, res) => {
 
   const submissions = await Submission.listForParticipant(participant.id);
 
+  // Session-wide deadline (started_at + duration), same for every participant.
+  const deadline = participant.session_started_at
+    ? new Date(participant.session_started_at).getTime() +
+      participant.session_duration_minutes * 60000
+    : null;
+
   res.json({
     participant,
     questions,
     submissions,
-    remainingMs: participant.ends_at ? timerService.remainingMs(participant.ends_at) : null,
+    remainingMs: deadline ? timerService.remainingMs(deadline) : null,
   });
 });
 
@@ -97,6 +104,16 @@ router.post('/me/join', async (req, res) => {
 
   if (!session || !participant) {
     return res.status(403).json({ error: 'Kode tidak valid atau kamu tidak terdaftar untuk sesi ini' });
+  }
+
+  // The exam clock is session-wide and already running. Once the session
+  // deadline has passed there is no time left to join into — reject with a
+  // clear reason rather than provisioning a container for 0 minutes.
+  if (
+    session.started_at &&
+    Date.now() > new Date(session.started_at).getTime() + session.duration_minutes * 60000
+  ) {
+    return res.status(403).json({ error: 'Waktu ujian sudah berakhir' });
   }
 
   // Atomically claim this participant for provisioning BEFORE responding. A second

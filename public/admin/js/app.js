@@ -53,6 +53,10 @@ function boot() {
   applyRoleVisibility();
   window.connectAdminSocket?.();
   window.loadSessions?.();
+  // deep link: /admin#questions etc. (used by the sidebar on the standalone
+  // session page) — open that tab instead of the default "Sesi".
+  const target = document.querySelector(`.tab-btn[data-tab="${location.hash.slice(1)}"]`);
+  if (target) target.click();
 }
 
 // wait for the sibling scripts (sessions.js etc.) to register their globals

@@ -6,6 +6,8 @@ let term = null;
 let timerInterval = null;
 let lastExamData = null; // kept so the question panel can re-render on language change
 let lastFinalSubmissions = null;
+let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
+let pendingExamData = null; // container is ready; held until the student clicks "Mulai"
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -32,6 +34,9 @@ document.getElementById('change-pw-btn').addEventListener('click', submitPasswor
 document.getElementById('logout-btn').addEventListener('click', logout);
 document.getElementById('join-btn').addEventListener('click', joinSession);
 document.getElementById('waiting-back-btn').addEventListener('click', enterDashboard);
+document.getElementById('start-exam-now-btn').addEventListener('click', () => {
+  if (pendingExamData) startExamUi(pendingExamData);
+});
 document.getElementById('join-code-input').addEventListener('input', (e) => {
   e.target.value = e.target.value.toUpperCase();
 });
@@ -179,15 +184,32 @@ async function joinSession() {
 /** Waiting screen in its default (spinner) state. */
 function showWaiting() {
   showScreen('waiting');
+  screens.waiting.setAttribute('aria-busy', 'true');
   document.getElementById('waiting-spinner').classList.remove('hidden');
   document.getElementById('waiting-error').classList.add('hidden');
+  document.getElementById('waiting-ready').classList.add('hidden');
 }
 
 /** Provisioning failed server-side — show it, don't leave the student on a dead spinner. */
 function showProvisionError() {
   showScreen('waiting');
+  screens.waiting.removeAttribute('aria-busy');
   document.getElementById('waiting-spinner').classList.add('hidden');
   document.getElementById('waiting-error').classList.remove('hidden');
+  document.getElementById('waiting-ready').classList.add('hidden');
+}
+
+/**
+ * Container is ready. The exam clock is already running session-wide, so this
+ * is a pure UI-reveal gate — the student clicks "Mulai" to drop into the
+ * terminal. Shown on every load (incl. a mid-exam refresh) by design.
+ */
+function showWaitingReady() {
+  showScreen('waiting');
+  screens.waiting.removeAttribute('aria-busy');
+  document.getElementById('waiting-spinner').classList.add('hidden');
+  document.getElementById('waiting-error').classList.add('hidden');
+  document.getElementById('waiting-ready').classList.remove('hidden');
 }
 
 function logout() {
@@ -216,7 +238,8 @@ async function checkActiveParticipant() {
     if (!screens.waiting.classList.contains('hidden')) showProvisionError();
     return;
   }
-  startExamUi(data);
+  pendingExamData = data;
+  showWaitingReady();
 }
 
 // each step is isolated: if the terminal can't init or the socket can't
@@ -319,9 +342,9 @@ function connectSocket(sessionToken) {
 
   socket.on('terminal:output', (data) => term.write(data));
   socket.on('terminal:error', (e) => term.writeln('\r\n' + t('common.errorPrefix', { msg: e.message })));
-  term.onData((data) => socket.emit('terminal:input', data));
+  term.onData((data) => { if (!examLocked) socket.emit('terminal:input', data); });
 
-  setupViolationReporting(socket, sessionToken);
+  setupLockdown(socket, sessionToken);
 
   socket.on('exam:score_update', ({ questionId, point, solvedCount, totalQuestions }) => {
     const card = document.getElementById(`q-${questionId}`);
@@ -343,25 +366,63 @@ function showToast(text) {
   window.ui.toast(text, 'success');
 }
 
-// ---- anti-cheat: tab-switch detection (audit only) ----
-// Best-effort: a browser can't see OS-level app switching, and nothing here
-// blocks the student — the terminal stays live. We just report each time the
-// exam tab loses visibility/focus so the dashboard has an audit trail. See README.
-function setupViolationReporting(socket, sessionToken) {
-  const examVisible = () => !screens.exam.classList.contains('hidden');
-  let lastReport = 0;
+// ---- anti-cheat: lockdown on tab-switch ----
+// Detection is best-effort (a browser can't stop OS-level app switching) — this
+// is deterrent + audit trail, not an OS lockdown. See README.
+function setupLockdown(socket, sessionToken) {
+  const overlay = document.getElementById('lock-overlay');
+  const codeInput = document.getElementById('lock-code-input');
+  const errorEl = document.getElementById('lock-error');
 
-  function report() {
-    if (!examVisible()) return;
-    if (Date.now() - lastReport < 1000) return; // coalesce the blur+visibilitychange pair
-    lastReport = Date.now();
+  const examVisible = () => !screens.exam.classList.contains('hidden');
+
+  function lockUi() {
+    if (examLocked) return;
+    examLocked = true;
+    if (term && term.options) term.options.disableStdin = true;
+    overlay.classList.remove('hidden');
+    errorEl.textContent = '';
+    codeInput.value = '';
+    codeInput.focus();
+  }
+
+  function unlockUi() {
+    examLocked = false;
+    if (term && term.options) term.options.disableStdin = false;
+    overlay.classList.add('hidden');
+    errorEl.textContent = '';
+    try { term.focus(); } catch (_) {}
+  }
+
+  // lock the client FIRST (don't wait for the server round-trip), then report it
+  function onStudentLeft() {
+    if (examLocked || !examVisible()) return;
+    lockUi();
     socket.emit('student:violation', { sessionToken });
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) report();
+    if (document.hidden) onStudentLeft();
   });
-  window.addEventListener('blur', report);
+  window.addEventListener('blur', onStudentLeft);
+
+  const submitCode = () => {
+    const code = codeInput.value.trim();
+    if (!code) return;
+    errorEl.textContent = '';
+    socket.emit('student:unlock', { code });
+  };
+  document.getElementById('lock-unlock-btn').addEventListener('click', submitCode);
+  codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitCode(); });
+
+  socket.on('exam:locked', lockUi);
+  socket.on('exam:unlocked', () => {
+    unlockUi();
+    showToast(t('student.unlocked'));
+  });
+  socket.on('exam:unlock_failed', ({ throttled } = {}) => {
+    errorEl.textContent = throttled ? t('student.unlockThrottled') : t('student.unlockWrong');
+  });
 }
 
 function startTimer(remainingMs) {
@@ -462,7 +523,8 @@ async function resume() {
     if (res.ok) {
       const data = await res.json();
       if (data.participant && data.participant.container_status === 'error') return showProvisionError();
-      return startExamUi(data);
+      pendingExamData = data;
+      return showWaitingReady();
     }
   } catch {
     /* fall through to dashboard */

@@ -1,0 +1,52 @@
+<%
+  // Shared admin sidebar.
+  //   standalone=false (dashboard): items are tab buttons the SPA wires up.
+  //   standalone=true  (standalone page, e.g. /admin/sessions/:id): items are
+  //                    plain links back into the dashboard at /admin#<tab>.
+  const isStandalone = typeof standalone !== 'undefined' && standalone;
+  const activeTab = typeof active !== 'undefined' && active ? active : 'sessions';
+  const items = [
+    { tab: 'sessions', i18n: 'admin.tabSessions', label: 'Sesi',
+      icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>' },
+    { tab: 'questions', i18n: 'admin.tabQuestions', label: 'Bank Soal', role: 'instruktur-visible',
+      icon: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' },
+    { tab: 'review', i18n: 'admin.tabReview', label: 'Review Nilai',
+      icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>' },
+    { tab: 'grades', i18n: 'admin.tabGrades', label: 'Mahasiswa & Nilai',
+      icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>' },
+    { tab: 'students', i18n: 'admin.tabStudents', label: 'Mahasiswa',
+      icon: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>' },
+    { tab: 'staff', i18n: 'admin.tabStaff', label: 'Staf', role: 'instruktur-visible',
+      icon: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3 3-1.5-1.5"/>' },
+  ];
+%>
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-mark">&gt;_</div>
+    <span data-i18n="admin.dashboardHeading">Tekser Exam Admin</span>
+  </div>
+
+  <% items.forEach((it) => { %>
+    <%
+      const isActive = it.tab === activeTab;
+      const roleAttr = it.role ? ` data-role="${it.role}"` : '';
+      const activeCls = isActive ? ' active' : '';
+    %>
+    <% if (isStandalone) { %>
+      <a class="side-link<%= activeCls %>" href="/admin#<%= it.tab %>"<%- roleAttr %><%- isActive ? ' aria-current="page"' : '' %>>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- it.icon %></svg>
+        <span data-i18n="<%= it.i18n %>"><%= it.label %></span>
+      </a>
+    <% } else { %>
+      <button class="side-link tab-btn<%= activeCls %>" data-tab="<%= it.tab %>"<%- roleAttr %>>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- it.icon %></svg>
+        <span data-i18n="<%= it.i18n %>"><%= it.label %></span>
+      </button>
+    <% } %>
+  <% }) %>
+
+  <button id="admin-logout-btn" class="side-link mt-auto">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    <span data-i18n="common.logout">Keluar</span>
+  </button>
+</aside>

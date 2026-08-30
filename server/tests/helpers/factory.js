@@ -63,15 +63,16 @@ async function createParticipant({
   ends_at,
   active_question_id = null,
   violation_count = 0,
-  last_violation_at = null,
+  lock_code = null,
+  locked_at = null,
 } = {}) {
   const token = session_token || crypto.randomUUID();
   const endsAt = ends_at === undefined ? new Date(Date.now() + 10 * 60000).toISOString() : ends_at;
   return db.run(
     `INSERT INTO session_participants
        (session_id, user_id, variant_index, container_id, container_status, session_token,
-        started_at, ends_at, active_question_id, violation_count, last_violation_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        started_at, ends_at, active_question_id, violation_count, lock_code, locked_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
     [
       session.id,
       user.id,
@@ -83,7 +84,8 @@ async function createParticipant({
       endsAt,
       active_question_id,
       violation_count,
-      last_violation_at,
+      lock_code,
+      locked_at,
     ]
   );
 }

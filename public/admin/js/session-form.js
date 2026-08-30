@@ -13,6 +13,17 @@
   const match = location.pathname.match(/\/admin\/sessions\/(new|\d+)/);
   let sessionId = match && match[1] !== 'new' ? match[1] : null;
   let socket = null;
+  let countdownInterval = null;
+
+  document.getElementById('admin-logout-btn')?.addEventListener('click', () => {
+    localStorage.removeItem('tekser_admin_token');
+    location.href = '/admin';
+  });
+
+  // Same role-gating the dashboard applies to the shared sidebar partial.
+  document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {
+    el.hidden = window.adminRole !== 'instruktur';
+  });
 
   const CONTAINER_TONE = {
     active: 'green', running: 'green', ready: 'blue', provisioning: 'amber',
@@ -36,18 +47,53 @@
 
   function renderSummary(s) {
     $('summary-name').textContent = s.name;
+    // Session-wide countdown: started_at + duration_minutes, same for everyone.
+    const countdown =
+      s.status === 'running' && s.started_at
+        ? `<span class="session-countdown badge badge-blue" data-ends-at="${new Date(
+            new Date(s.started_at).getTime() + s.duration_minutes * 60000
+          ).toISOString()}">--:--</span>`
+        : '';
     $('summary-meta').innerHTML = [
       window.ui.pill(t('common.minutes', { n: s.duration_minutes }), 'gray'),
       window.ui.pill(t('admin.ucpN', { n: s.ucp ?? 1 }), 'gray'),
       window.ui.pill(t('admin.status.' + s.status), STATUS_TONE[s.status] || 'gray'),
+      countdown,
     ].join('');
     $('join-code-value').textContent = s.join_code || '------';
     $('start-exam-btn').hidden = s.status !== 'pending'; // only meaningful while pending
+    startCountdown();
+  }
+
+  // Ticks the session-wide countdown badge once a second (mirrors sessions.js).
+  function startCountdown() {
+    clearInterval(countdownInterval);
+    const tick = () => {
+      const el = document.querySelector('.session-countdown');
+      if (!el) return;
+      const remainingSec = Math.floor((new Date(el.dataset.endsAt).getTime() - Date.now()) / 1000);
+      if (remainingSec <= 0) {
+        el.textContent = t('admin.timeUp');
+        return;
+      }
+      const m = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+      const sec = String(remainingSec % 60).padStart(2, '0');
+      el.textContent = `${m}:${sec}`;
+    };
+    tick();
+    countdownInterval = setInterval(tick, 1000);
   }
 
   function renderParticipantRow(p) {
     const violationPill = p.violation_count
       ? window.ui.pill(`⚠ ${t('admin.tabSwitches', { n: p.violation_count })}`, 'amber')
+      : '';
+    // anti-cheat: when locked, show the 6-digit unlock code big so an assistant
+    // can read it out, plus a no-code force-unlock button.
+    const lockBadge = p.locked_at
+      ? `${window.ui.pill(`🔒 ${t('admin.locked')}`, 'amber')}` +
+        `<span class="lock-code">${esc(p.lock_code || '------')}</span>` +
+        `<button class="force-unlock-btn btn btn-sm btn-ghost" data-id="${p.id}">${t('admin.forceUnlock')}</button>`
       : '';
     const meta = [
       `<span class="mono">${esc(p.nim)}</span>`,
@@ -61,6 +107,7 @@
         <div class="card-row__meta">${meta}</div>
       </div>
       <div class="card-row__aside">
+        ${lockBadge}
         ${violationPill}
         ${containerPill(p.container_status)}
       </div>
@@ -74,6 +121,14 @@
     $('participant-list').innerHTML = participants.length
       ? `<div class="row-list">${participants.map(renderParticipantRow).join('')}</div>`
       : `<p class="text-sm text-[color:var(--text-faint)]">${esc(t('admin.noParticipantsYet'))}</p>`;
+    $('participant-list')
+      .querySelectorAll('.force-unlock-btn')
+      .forEach((btn) =>
+        btn.addEventListener('click', async () => {
+          await apiFetch(`/admin/review/participants/${btn.dataset.id}/force-unlock`, { method: 'POST' });
+          loadSession();
+        })
+      );
   }
 
   function connectSocket() {

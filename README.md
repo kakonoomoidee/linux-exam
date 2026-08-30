@@ -9,10 +9,11 @@ dosen kasih nilai parsial (0/25/50/75/100%).
 
 1. Admin bikin sesi, upload daftar NIM peserta. Variant soal (0-9) otomatis
    ditentukan dari digit terakhir NIM.
-2. Admin klik **Start** → tiap peserta dapet container Docker sendiri
-   (isolated, no internet, resource-limited). Timer per-peserta mulai begitu
-   container-nya siap, bukan pas tombol Start ditekan — supaya boot time
-   container gak motong waktu ujian.
+2. Admin klik **Mulai Ujian** → timer sesi mulai jalan (`started_at + durasi`,
+   satu deadline buat semua peserta). Tiap peserta dapet container Docker
+   sendiri (isolated, no internet, resource-limited) pas mereka submit join
+   code. Yang telat join dapet sisa waktu yang lebih dikit — konsekuensi dari
+   "semua ngikutin instruktur".
 3. Mahasiswa ngetik command di terminal browser (xterm.js) yang di-bridge ke
    container mereka lewat WebSocket.
 4. Setiap command yang dieksekusi di container otomatis dikirim ke server
@@ -136,7 +137,7 @@ npm run test:coverage     # + tabel coverage
 npx jest tests/unit       # subset
 ```
 
-Struktur: `tests/unit/` (evaluator, User, importService,
+Struktur: `tests/unit/` (evaluator, lockService, User, importService,
 containerDrivers) + `tests/integration/` (auth, adminSessions, adminQuestions,
 cmd-log webhook, submit flow, review/grades, lockdown sockets, async-error
 handling). Helper di `tests/helpers/` — `db.js` (`useTestDb()`), `factory.js`
@@ -288,7 +289,10 @@ npm run import-questions -- /path/ke/soal.xlsx
 ## Keputusan desain penting (baca sebelum modif)
 
 - **Timer server-side, bukan client-side** — biar gak bisa dimanipulasi dari
-  browser. Dijadwalkan di `timerService.js`, dipicu begitu container ready.
+  browser. Satu timer per-sesi di `timerService.js`, di-arm pas "Mulai Ujian"
+  (deadline = `session.started_at + duration_minutes`); pas expired, semua
+  peserta yang masih aktif di-`endParticipant` sekaligus. Di-re-arm pas boot
+  buat sesi yang masih `running` (timer in-memory gak survive restart).
 - **Command match butuh `exit_code === 0`** — command yang gagal (termasuk
   typo) gak pernah dapet poin, meskipun teksnya kebetulan mirip pola yang
   diharapkan.
@@ -310,16 +314,16 @@ npm run import-questions -- /path/ke/soal.xlsx
   middleware, jadi tanpa ini `await` yang throw di handler bikin request
   hang selamanya (bukan 500). Dengan shim ini semua async rejection nyampe
   ke `app.use((err,...))` yang balesin `500 { error }` JSON. Jangan dicabut.
-- **Tab-switch itu deteksi + audit trail doang, BUKAN lockdown.** Client
-  dengerin `visibilitychange` + `window.blur` dan lapor `student:violation` —
-  gak ada overlay, terminal gak dimatiin, mahasiswa lanjut ngerjain tanpa
-  gangguan. Server naikin `violation_count` + stamp `last_violation_at`, lalu
-  push `admin:violation` (non-blocking toast) ke dashboard; jumlahnya kelihatan
-  di halaman sesi. Gak ada state "locked", gak ada kode unlock, gak ada "Buka
-  Paksa". Kolom `lock_code` / `locked_at` masih ada di schema tapi udah gak
-  dipake. Timer server-side emang selalu jalan — pindah tab gak pernah nambah
-  waktu. Batas: browser gak bisa nyegah app-switching secara fisik, dan
-  mahasiswa yang niat masih bisa pakai device kedua.
+- **Lockdown on tab-switch itu deteksi + deterrent + audit trail, BUKAN
+  lockdown OS-level.** Client dengerin `visibilitychange` + `window.blur`,
+  langsung nutup terminal & soal pas mahasiswa pindah tab / alt-tab, lalu
+  lapor `student:violation`. Server generate kode unlock 6 digit baru tiap
+  pelanggaran (kode lama otomatis invalid), naikin `violation_count`, dan
+  nolak `terminal:input` selama status locked (gak cuma andelin disable di
+  client). Timer server-side **tetep jalan** selama locked — pindah tab gak
+  nambah waktu. Batas: browser gak bisa nyegah app-switching secara fisik,
+  dan mahasiswa yang niat masih bisa pakai device kedua. Asisten lihat kode
+  real-time di tab "Sesi" dan bisa "Buka Paksa".
 
 ## Yang masih perlu disesuaikan sebelum dipakai ujian beneran
 
