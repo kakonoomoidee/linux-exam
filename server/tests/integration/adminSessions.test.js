@@ -20,6 +20,13 @@ describe('POST /api/admin/sessions (create)', () => {
     expect(res.body.duration_minutes).toBe(10);
   });
 
+  test('the join code is minted at creation, while the session is still pending', async () => {
+    const res = await request(app).post('/api/admin/sessions').set(auth).send({ name: 'UTS' });
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('pending');
+    expect(res.body.join_code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/);
+  });
+
   test('empty name -> 400', async () => {
     const res = await request(app).post('/api/admin/sessions').set(auth).send({ name: '' });
     expect(res.status).toBe(400);

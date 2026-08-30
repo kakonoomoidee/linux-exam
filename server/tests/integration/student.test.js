@@ -109,6 +109,21 @@ describe('POST /api/me/join', () => {
     expect(res.status).toBe(403);
   });
 
+  test('code exists but the session is still pending (not started) -> generic 403', async () => {
+    // join codes are minted at Session.create() now, so a code can be valid
+    // while the session has not been started — the status='running' gate holds.
+    const student = await createStudent({ nim: '20220140055' });
+    const pending = await createSession({ status: 'pending' });
+    const withCode = await Session.ensureJoinCode(pending.id);
+    await createParticipant({ session: pending, user: student, container_status: 'not_started' });
+
+    const res = await request(app)
+      .post('/api/me/join')
+      .set(bearer(student))
+      .send({ code: withCode.join_code });
+    expect(res.status).toBe(403);
+  });
+
   test('right code + on the roster + running -> 202 and the student gets provisioned', async () => {
     const student = await createStudent({ nim: '20220140055' });
     const session = await runningSessionWithCode();
