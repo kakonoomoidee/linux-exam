@@ -14,52 +14,19 @@ function emitToParticipant(sessionToken, event, payload) {
 }
 
 /**
- * The exam clock is session-wide: one deadline for everyone, fixed the moment
- * the instructor clicks "Mulai Ujian" (Session.markRunning stamps started_at).
- * A late joiner just gets whatever is left. Deadline = started_at + duration.
+ * Provisioning is lazy per-student now: "Start" only flips the session to
+ * running and reveals the join code (see startSession). A participant's
+ * container is provisioned when THEY submit the join code from their dashboard
+ * (routes/student.js -> POST /me/join calls provisionOne for that one student).
+ * Each participant's exam timer still starts only once THEIR container is
+ * ready (see containerService), not at "Start".
  */
-function sessionDeadline(session) {
-  return session && session.started_at
-    ? new Date(new Date(session.started_at).getTime() + session.duration_minutes * 60000)
-    : null;
-}
-
-/**
- * One server-side timer per running session (replaces the old N-per-participant
- * timers). Idempotent — timerService.schedule cancels + re-arms — so it's safe
- * to call from startSession, from every join, and on boot to survive a restart.
- */
-function ensureSessionTimer(session) {
-  const deadline = sessionDeadline(session);
-  if (deadline) timerService.schedule(session.id, deadline.toISOString(), endSessionExam);
-}
-
-/**
- * Deadline reached: end every participant still active in the session. One
- * participant's teardown failure must never block the rest — allSettled, plus
- * endParticipant is already idempotent and try/catches its own teardown.
- */
-async function endSessionExam(sessionId) {
-  const participants = await Session.listParticipants(sessionId);
-  await Promise.allSettled(
-    participants.filter((p) => p.container_status === 'active').map((p) => endParticipant(p.id))
-  );
-  await Session.markEnded(sessionId);
-}
-
-/**
- * Provisioning is lazy per-student: "Start" only flips the session to running
- * and reveals the join code (see startSession). A container is provisioned when
- * the student submits the join code (routes/student.js -> POST /me/join). The
- * exam clock does NOT start here — it's already running session-wide.
- */
+/** Provision one participant's container and start their personal timer. */
 async function provisionOne(participant, session) {
   const updated = await containerService.provisionParticipant(participant, session.duration_minutes);
   if (updated.container_status === 'active') {
-    ensureSessionTimer(session); // self-heals if the session timer was lost to a restart
-    emitToParticipant(updated.session_token, 'exam:ready', {
-      endsAt: sessionDeadline(session)?.toISOString() || null,
-    });
+    timerService.schedule(updated.id, updated.ends_at, endParticipant);
+    emitToParticipant(updated.session_token, 'exam:ready', { endsAt: updated.ends_at });
   } else {
     emitToParticipant(updated.session_token, 'exam:error', {
       message: 'Gagal menyiapkan environment. Hubungi asisten dosen.',
@@ -69,11 +36,9 @@ async function provisionOne(participant, session) {
 }
 
 async function startSession(sessionId) {
-  await Session.markRunning(sessionId); // stamps started_at = now()
+  await Session.markRunning(sessionId);
   await Session.ensureJoinCode(sessionId); // students provision themselves via POST /me/join
-  const session = await Session.findById(sessionId);
-  ensureSessionTimer(session);
-  return session;
+  return Session.findById(sessionId);
 }
 
 /** Called when a participant's timer expires OR they submit manually. */
@@ -148,7 +113,6 @@ async function submitParticipant(participantId) {
  * logs and submissions cascade away with it.
  */
 async function deleteSession(sessionId) {
-  timerService.cancel(sessionId); // the session-wide exam timer
   const participants = await Session.listParticipants(sessionId);
   await Promise.all(
     participants.map(async (p) => {
@@ -170,9 +134,6 @@ module.exports = {
   startSession,
   provisionOne,
   endParticipant,
-  endSessionExam,
-  ensureSessionTimer,
-  sessionDeadline,
   submitParticipant,
   deleteSession,
 };

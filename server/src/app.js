@@ -48,10 +48,6 @@ function buildApp() {
   app.get('/', (req, res) => res.redirect('/exam'));
   app.get('/exam', (req, res) => res.render('student/index', { localesScript }));
   app.get('/admin', (req, res) => res.render('admin/index', { localesScript }));
-  // Standalone (outside the dashboard tab shell): create a session, or manage one
-  // (roster + join code + "Mulai Ujian"). Auth is client-side, same as /admin.
-  app.get('/admin/sessions/new', (req, res) => res.render('admin/session-form', { localesScript }));
-  app.get('/admin/sessions/:id', (req, res) => res.render('admin/session-form', { localesScript }));
 
   // static JS for those views (kept out of /exam and /admin so those paths stay EJS-only)
   app.use('/exam-assets', express.static(path.join(__dirname, '../../public/student')));

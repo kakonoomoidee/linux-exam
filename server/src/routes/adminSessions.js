@@ -95,10 +95,10 @@ router.post('/:id/start', async (req, res) => {
     return res.json(await Session.ensureJoinCode(session.id));
   }
 
-  // Await the flip so the client's immediate re-fetch sees status='running'
-  // + started_at (otherwise the GET races the write and the instructor has to
-  // click twice). No container work happens here — that's lazy per join.
-  res.json(await examService.startSession(session.id));
+  res.status(202).json({ message: 'Sesi dimulai', sessionId: session.id });
+  examService.startSession(session.id).catch((err) =>
+    console.error(`[adminSessions] startSession failed for ${session.id}`, err)
+  );
 });
 
 router.get('/:id/participants', async (req, res) => {

@@ -1,29 +1,28 @@
 /**
  * Server-side timers so the exam clock can never be manipulated from the
- * browser. One setTimeout per running session, armed when the instructor starts
- * the exam (see examService.ensureSessionTimer); on expiry it ends every active
- * participant at once. Keyed generically so callers own the key namespace.
+ * browser. One setTimeout per participant, scheduled the moment their
+ * container becomes ready (see containerService.provisionParticipant).
  */
-const timers = new Map(); // key -> Timeout handle
+const timers = new Map(); // participantId -> Timeout handle
 
-function schedule(key, endsAtIso, onExpire) {
-  cancel(key);
+function schedule(participantId, endsAtIso, onExpire) {
+  cancel(participantId);
   const msLeft = new Date(endsAtIso).getTime() - Date.now();
   const delay = Math.max(msLeft, 0);
   const handle = setTimeout(() => {
-    timers.delete(key);
-    onExpire(key).catch((err) =>
-      console.error(`[timerService] onExpire failed for ${key}`, err)
+    timers.delete(participantId);
+    onExpire(participantId).catch((err) =>
+      console.error(`[timerService] onExpire failed for participant ${participantId}`, err)
     );
   }, delay);
-  timers.set(key, handle);
+  timers.set(participantId, handle);
 }
 
-function cancel(key) {
-  const existing = timers.get(key);
+function cancel(participantId) {
+  const existing = timers.get(participantId);
   if (existing) {
     clearTimeout(existing);
-    timers.delete(key);
+    timers.delete(participantId);
   }
 }
 

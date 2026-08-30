@@ -17,13 +17,6 @@ function initSockets(httpServer) {
   ioInstance = io;
   examService.attachIo(io);
 
-  // In-memory timers don't survive a restart. Re-arm the session-wide exam
-  // timer for anything still running; a deadline already in the past fires
-  // immediately (timerService clamps the delay to 0).
-  Session.listRunning()
-    .then((rows) => rows.forEach((s) => examService.ensureSessionTimer(s)))
-    .catch((err) => console.error('[sockets] failed to re-arm session timers on boot', err));
-
   io.on('connection', (socket) => {
     // --- student joins their own exam room, authenticated by their session_token ---
     socket.on('student:join', async ({ sessionToken }) => {
@@ -35,12 +28,9 @@ function initSockets(httpServer) {
 
       // re-sync the exam clock for anyone who joined after (or missed) the
       // room-wide exam:ready — a refresh mid-exam, or a socket that connected
-      // while their container was still provisioning. The deadline is
-      // session-wide (started_at + duration), not per-participant.
-      if (participant.container_status === 'active') {
-        const session = await Session.findById(participant.session_id);
-        const endsAt = examService.sessionDeadline(session)?.toISOString();
-        if (endsAt) socket.emit('exam:ready', { endsAt });
+      // while their container was still provisioning.
+      if (participant.container_status === 'active' && participant.ends_at) {
+        socket.emit('exam:ready', { endsAt: participant.ends_at });
       }
 
       // if they refreshed (or the server restarted) while locked, restore the lock

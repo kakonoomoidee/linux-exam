@@ -148,7 +148,6 @@ async function openTranscriptModal(sessionId, nimFilter = '') {
     showConfirmButton: false,
     showCloseButton: true,
     customClass: { popup: 'ui-swal-popup' },
-    didOpen: () => window.ui.enhanceAllSelects(window.Swal.getPopup()),
   });
 }
 
@@ -217,7 +216,6 @@ function renderTranscript() {
     transcriptFilter = ev.target.value;
     const fresh = renderTranscript();
     wrap.replaceWith(fresh);
-    window.ui.enhanceAllSelects(fresh); // fresh <select> from the re-render
   });
   return wrap;
 }

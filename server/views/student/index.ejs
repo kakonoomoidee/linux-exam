@@ -88,7 +88,7 @@
   </div>
 
   <!-- waiting for the session to start -->
-  <div id="waiting-screen" class="screen hidden min-h-screen flex items-center justify-center p-6" aria-busy="true">
+  <div id="waiting-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
     <div class="card max-w-sm text-center flex flex-col items-center gap-4">
       <div id="waiting-spinner" class="flex flex-col items-center gap-4">
         <div class="spinner"></div>
@@ -103,27 +103,6 @@
         <button id="waiting-back-btn" class="btn btn-primary" data-i18n="student.backToDashboard">
           Kembali ke Dashboard
         </button>
-      </div>
-      <div id="waiting-pending" class="hidden flex flex-col items-center gap-4">
-        <div class="spinner"></div>
-        <p class="text-[color:var(--text-muted)]" data-i18n="student.waitingForStart">
-          Menunggu instruktur memulai ujian...
-        </p>
-        <button id="waiting-pending-back-btn" class="btn btn-ghost btn-sm" data-i18n="student.backToDashboard">
-          Kembali ke Dashboard
-        </button>
-      </div>
-      <div id="waiting-ready" class="hidden flex flex-col items-center gap-4">
-        <div class="text-3xl" aria-hidden="true">✅</div>
-        <p class="text-[color:var(--text-muted)]" data-i18n="student.envReady">
-          Environment kamu sudah siap.
-        </p>
-        <button id="start-exam-now-btn" class="btn btn-primary btn-block" data-i18n="student.startExamNow">
-          Mulai Ujian
-        </button>
-        <p class="text-xs text-[color:var(--text-faint)]" data-i18n="student.timerRunsNote">
-          Waktu ujian tetap berjalan sejak instruktur memulai — menunda hanya mengurangi waktumu.
-        </p>
       </div>
     </div>
   </div>

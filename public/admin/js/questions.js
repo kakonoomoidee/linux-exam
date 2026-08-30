@@ -120,7 +120,6 @@ async function openQuestionForm(existing) {
     customClass: { popup: 'ui-swal-popup', confirmButton: 'ui-swal-confirm', cancelButton: 'ui-swal-cancel' },
     buttonsStyling: false,
     focusConfirm: false,
-    didOpen: () => window.ui.enhanceAllSelects(window.Swal.getPopup()),
     preConfirm: () => {
       const body = readQuestionForm();
       if (!body.story_text) {

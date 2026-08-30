@@ -1,4 +1,17 @@
-// API, t, adminToken, readRole, apiFetch live in api.js (loaded before this file).
+const API = '/api';
+const t = (k, v) => window.i18n.t(k, v);
+let adminToken = localStorage.getItem('tekser_admin_token') || null;
+
+// Role rides in the JWT payload — decode it (no verification needed client-side,
+// the server enforces; this is only to hide buttons that would 403 anyway).
+function readRole(token) {
+  try {
+    return JSON.parse(atob((token || '').split('.')[1] || '')).role || null;
+  } catch {
+    return null;
+  }
+}
+window.adminRole = readRole(adminToken);
 
 /** Show/hide instruktur-only controls (sidebar links + [data-role="instruktur-visible"]). */
 function applyRoleVisibility() {
@@ -6,6 +19,20 @@ function applyRoleVisibility() {
   document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {
     el.hidden = !isInstruktur;
   });
+}
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: {
+      ...(opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      Authorization: `Bearer ${adminToken}`,
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(window.i18n.apiError(data.error) || t('common.requestFailed', { status: res.status }));
+  return data;
 }
 
 document.getElementById('admin-login-btn').addEventListener('click', async () => {
@@ -29,11 +56,10 @@ document.getElementById('admin-login-btn').addEventListener('click', async () =>
   }
 });
 
-function logout() {
+document.getElementById('admin-logout-btn').addEventListener('click', () => {
   localStorage.removeItem('tekser_admin_token');
   location.reload();
-}
-document.getElementById('admin-logout-btn').addEventListener('click', logout);
+});
 
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -52,13 +78,8 @@ function boot() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('dashboard-screen').classList.remove('hidden');
   applyRoleVisibility();
-  window.ui.idleLogout({ onIdle: logout });
   window.connectAdminSocket?.();
   window.loadSessions?.();
-  // deep link: /admin#questions etc. (used by the sidebar on the standalone
-  // session page) — open that tab instead of the default "Sesi".
-  const target = document.querySelector(`.tab-btn[data-tab="${location.hash.slice(1)}"]`);
-  if (target) target.click();
 }
 
 // wait for the sibling scripts (sessions.js etc.) to register their globals
