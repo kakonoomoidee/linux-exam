@@ -5,10 +5,10 @@ let socket = null;
 let term = null;
 let timerInterval = null;
 let lastExamData = null; // kept so the question panel can re-render on language change
-let lastFinalSubmissions = null;
 let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
 let pendingExamData = null; // container is ready; held until the student clicks "Mulai"
 let joinPollTimer = null;   // re-polls /me/join while the session is still 'pending'
+let pwChangeVoluntary = false; // true when the student opened change-password from the dashboard (not forced)
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -16,7 +16,6 @@ const screens = {
   dashboard: document.getElementById('dashboard-screen'),
   waiting: document.getElementById('waiting-screen'),
   exam: document.getElementById('exam-screen'),
-  ended: document.getElementById('ended-screen'),
 };
 function showScreen(name) {
   Object.values(screens).forEach((s) => s.classList.add('hidden'));
@@ -33,6 +32,8 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
+document.getElementById('change-pw-link').addEventListener('click', () => showChangePassword(true));
+document.getElementById('change-pw-back-btn').addEventListener('click', enterDashboard);
 // Idle auto-logout everywhere EXCEPT the active exam screen — sitting and
 // thinking is normal mid-exam, and the server-side clock runs regardless.
 window.ui.idleLogout({
@@ -84,7 +85,7 @@ async function login() {
     localStorage.setItem('tekser_token', token);
     persistUser(data.user, data.mustChangePassword);
     setIdentity(data.user);
-    if (data.mustChangePassword) showScreen('changePassword');
+    if (data.mustChangePassword) showChangePassword(false);
     else enterDashboard();
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('student.loginFailed');
@@ -115,10 +116,32 @@ async function submitPasswordChange() {
     token = data.token; // fresh token, no longer must-change
     localStorage.setItem('tekser_token', token);
     persistUser(storedUser(), false);
+    const wasVoluntary = pwChangeVoluntary;
     enterDashboard();
+    if (wasVoluntary) window.ui.toast(t('student.changePwDone'));
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('common.requestFailed', { status: 0 });
   }
+}
+
+/**
+ * Show the change-password screen. `voluntary` = opened from the dashboard sidebar
+ * (offer a way back, neutral copy); otherwise it's the forced first-login gate.
+ */
+function showChangePassword(voluntary) {
+  pwChangeVoluntary = !!voluntary;
+  const subtitle = document.getElementById('change-pw-subtitle');
+  subtitle.setAttribute(
+    'data-i18n',
+    voluntary ? 'student.changePwVoluntarySubtitle' : 'student.changePwSubtitle'
+  );
+  subtitle.textContent = t(subtitle.getAttribute('data-i18n'));
+  document.getElementById('change-pw-back-btn').classList.toggle('hidden', !voluntary);
+  ['current-pw-input', 'new-pw-input', 'confirm-pw-input'].forEach((id) => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('change-pw-error').textContent = '';
+  showScreen('changePassword');
 }
 
 function enterDashboard() {
@@ -140,27 +163,38 @@ function enterDashboard() {
 
 async function loadHistory() {
   const list = document.getElementById('history-list');
+  // skeleton so the card never flashes empty before the fetch resolves
+  list.innerHTML = '<div class="row-list">' + '<div class="skeleton skeleton-row"></div>'.repeat(3) + '</div>';
   try {
     const res = await fetch(`${API}/me/history`, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error();
     const rows = await res.json();
     if (!rows.length) {
-      list.innerHTML = `<p class="text-sm text-[color:var(--text-faint)]">${t('student.historyEmpty')}</p>`;
+      list.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <div class="empty-state__title">${t('student.historyEmpty')}</div>
+        <div class="empty-state__hint">${t('student.historyEmptyHint')}</div>
+      </div>`;
       return;
     }
-    list.innerHTML = rows
-      .map((r) => {
-        const when = r.started_at || r.created_at;
-        const date = when ? new Date(when).toLocaleDateString() : '';
-        return `<div class="py-2 border-b border-[color:var(--border)] last:border-0 flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <div class="font-medium truncate">${window.ui.escapeHtml(r.session_name || '')}</div>
-            <div class="meta-faint">${window.ui.escapeHtml(date)}</div>
-          </div>
-          <div class="font-bold shrink-0">${t('student.historyScore', { score: Number(r.score) })}</div>
-        </div>`;
-      })
-      .join('');
+    list.innerHTML =
+      '<div class="row-list">' +
+      rows
+        .map((r) => {
+          const when = r.started_at || r.created_at;
+          const date = when ? new Date(when).toLocaleDateString() : '';
+          return `<div class="card-row">
+            <div class="card-row__identity">
+              <div class="card-row__name">${window.ui.escapeHtml(r.session_name || '')}</div>
+              <div class="card-row__meta">${window.ui.escapeHtml(date)}</div>
+            </div>
+            <div class="card-row__aside">
+              <span class="badge badge-plain" style="font-weight:700">${t('student.historyScore', { score: Number(r.score) })}</span>
+            </div>
+          </div>`;
+        })
+        .join('') +
+      '</div>';
   } catch {
     list.innerHTML = `<p class="text-sm text-[color:var(--danger)]">${t('common.requestFailed', { status: 0 })}</p>`;
   }
@@ -292,7 +326,7 @@ async function checkActiveParticipant() {
   if (res.status === 401) return resetToLogin(); // token rejected mid-poll — force a clean re-login
   if (res.status === 403) {
     // token still says "must change password"
-    showScreen('changePassword');
+    showChangePassword(false);
     return;
   }
   if (res.status === 404) {
@@ -316,6 +350,7 @@ async function checkActiveParticipant() {
 function startExamUi(data) {
   lastExamData = data;
   showScreen('exam');
+  document.getElementById('submit-btn').disabled = false; // clear a leftover disable from a prior submit
 
   const step = (name, fn) => {
     try {
@@ -423,10 +458,8 @@ function connectSocket(sessionToken) {
   socket.on('exam:ended', ({ submissions }) => {
     clearInterval(timerInterval);
     clearTimeout(window.__submitStallTimer);
-    window.Swal && window.Swal.close(); // in case the "submitting..." loading modal is still open
-    lastFinalSubmissions = submissions;
-    renderFinalResults(submissions);
-    showScreen('ended');
+    // fires on both manual submit and session-timer expiry — same modal either way.
+    showResultsModal(submissions || []);
   });
 }
 
@@ -553,28 +586,55 @@ async function submitExam() {
   window.__submitStallTimer = stall;
 }
 
-function renderFinalResults(submissions) {
-  const total = submissions.reduce((sum, s) => sum + (s.final_score ?? s.auto_score), 0);
+/**
+ * Exam-over results as a modal over whatever screen the student was on — manual
+ * submit OR session-timer expiry. Confirm returns to the dashboard, which
+ * re-fetches /me/history so the just-finished exam shows up with no manual refresh.
+ * Replaces the old dead-end #ended-screen. `window.ui.modal.fire` also supersedes
+ * the still-open "submitting..." loading modal (SweetAlert2 is single-instance).
+ */
+function showResultsModal(submissions) {
+  const total = submissions.reduce((sum, s) => sum + (s.final_score ?? s.auto_score ?? 0), 0);
+  const en = window.i18n.getLang() === 'en';
   const rows = submissions
-    .map((s) =>
-      `<li class="py-1.5 border-b border-[color:var(--border)] last:border-0">${t('student.finalRow', {
-        n: s.order_index,
-        mark: s.auto_result === 'pass' ? '✅' : '❌',
-        score: s.auto_score,
-      })}</li>`
-    )
+    .map((s) => {
+      const solved = s.auto_result === 'pass';
+      const story = (en ? s.story_text_en || s.story_text : s.story_text) || '';
+      return `<div class="card-row">
+        <div class="card-row__identity">
+          <div class="card-row__name">${t('common.questionN', { n: s.order_index })}</div>
+          <div class="card-row__meta">${window.ui.escapeHtml(story)}</div>
+        </div>
+        <div class="card-row__aside">
+          <span class="badge badge-${solved ? 'green' : 'red'}">${solved ? '✅' : '❌'}</span>
+          <span class="badge badge-plain" style="font-weight:700">${t('common.points', { n: s.auto_score })}</span>
+        </div>
+      </div>`;
+    })
     .join('');
-  document.getElementById('final-results').innerHTML = `
-    <p class="text-lg font-bold mb-3">${t('student.provisionalTotal', { total })}</p>
-    <ul class="text-sm">${rows}</ul>
-    <p class="text-xs text-[color:var(--text-faint)] mt-3">${t('student.finalPending')}</p>
-  `;
+  const html = `
+    <p class="text-base font-bold mb-3">${t('student.provisionalTotal', { total })}</p>
+    <div class="row-list text-left" style="max-height:46vh;overflow-y:auto">${rows}</div>
+    <p class="text-xs text-[color:var(--text-faint)] mt-3">${t('student.finalPending')}</p>`;
+  window.ui.modal
+    .fire({
+      title: t('student.examOver'),
+      html,
+      icon: 'success',
+      width: 'min(560px, 94vw)',
+      confirmButtonText: t('student.backToDashboard'),
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    })
+    .then(() => {
+      try { socket && socket.disconnect(); } catch (_) {}
+      enterDashboard();
+    });
 }
 
 // re-render JS-built content when the language changes
 window.addEventListener('i18n:changed', () => {
   if (lastExamData) renderQuestions(lastExamData.questions, lastExamData.submissions);
-  if (lastFinalSubmissions) renderFinalResults(lastFinalSubmissions);
 });
 
 // resume flow on refresh: back to where the student was
@@ -582,13 +642,13 @@ async function resume() {
   const user = storedUser();
   setIdentity(user);
   if (user.mustChangePassword) {
-    showScreen('changePassword');
+    showChangePassword(false);
     return;
   }
   try {
     const res = await fetch(`${API}/me/active-participant`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.status === 401) return resetToLogin(); // stale/expired token — don't fall through to the dashboard
-    if (res.status === 403) return showScreen('changePassword');
+    if (res.status === 403) return showChangePassword(false);
     if (res.ok) {
       const data = await res.json();
       if (data.participant && data.participant.container_status === 'error') return showProvisionError();
