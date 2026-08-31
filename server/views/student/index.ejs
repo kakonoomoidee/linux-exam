@@ -40,7 +40,7 @@
     <div class="card w-full max-w-sm text-center">
       <div class="brand-mark mx-auto mb-4">&gt;_</div>
       <h1 class="text-lg font-bold mb-1" data-i18n="student.changePwTitle">Ganti Password</h1>
-      <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
+      <p id="change-pw-subtitle" class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
         Password default harus diganti sebelum melanjutkan.
       </p>
       <label class="label text-left" for="current-pw-input" data-i18n="student.currentPw">Password saat ini</label>
@@ -50,40 +50,63 @@
       <label class="label text-left" for="confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
       <input id="confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
       <button id="change-pw-btn" class="btn btn-primary btn-block" data-i18n="student.changePwBtn">Simpan</button>
+      <button id="change-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2 hidden"
+        data-i18n="student.backToDashboard">Kembali ke Dashboard</button>
       <p id="change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
     </div>
   </div>
 
-  <!-- dashboard: landing page after login -->
-  <div id="dashboard-screen" class="screen hidden min-h-screen p-6">
-    <div class="max-w-2xl mx-auto space-y-5">
-      <header class="card flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3 min-w-0">
-          <span id="dash-avatar" class="avatar avatar-sm" aria-hidden="true"></span>
+  <!-- dashboard: landing page after login. app-shell here ONLY — never on the exam screen. -->
+  <div id="dashboard-screen" class="screen hidden">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">&gt;_</div>
+          <span data-i18n="student.title">Ujian Praktikum Linux</span>
+        </div>
+
+        <div class="flex items-center gap-3 min-w-0 shrink-0 max-w-[200px] px-2 pb-4 mb-1 border-b border-[color:var(--border)]">
+          <span id="dash-avatar" class="avatar" aria-hidden="true"></span>
           <div class="min-w-0 leading-tight">
-            <div id="dash-name" class="font-semibold truncate"></div>
-            <div class="meta-faint truncate">
-              <span id="dash-nim" class="mono"></span><span id="dash-kelas"></span>
+            <div id="dash-name" class="card-row__name truncate"></div>
+            <div class="card-row__meta">
+              <span id="dash-nim" class="mono truncate"></span><span id="dash-kelas"></span>
             </div>
           </div>
         </div>
-        <button id="logout-btn" class="btn btn-ghost btn-sm" data-i18n="common.logout">Keluar</button>
-      </header>
 
-      <div class="card">
-        <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
-        <div class="flex gap-2">
-          <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
-            maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
-          <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+        <button id="change-pw-link" class="side-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-3 3a5 5 0 1 0-7 7l-7 7v3h3l7-7a5 5 0 0 0 7-7l-2 2-3-3z"/><path d="M15 9l3 3"/></svg>
+          <span data-i18n="student.changePwLink">Ganti Password</span>
+        </button>
+
+        <button id="logout-btn" class="side-link mt-auto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          <span data-i18n="common.logout">Keluar</span>
+        </button>
+      </aside>
+
+      <main class="main-pane">
+        <header class="mb-6">
+          <h1 class="page-title" data-i18n="student.title">Ujian Praktikum Linux</h1>
+          <p class="page-subtitle" data-i18n="student.dashSubtitle">Gabung ke sesi ujian dan lihat riwayat nilaimu.</p>
+        </header>
+
+        <div class="card">
+          <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
+          <div class="flex gap-2">
+            <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
+              maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
+            <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+          </div>
+          <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
         </div>
-        <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
-      </div>
 
-      <div class="card">
-        <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
-        <div id="history-list"></div>
-      </div>
+        <div class="card">
+          <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
+          <div id="history-list"></div>
+        </div>
+      </main>
     </div>
   </div>
 
@@ -179,11 +202,8 @@
     </div>
   </div>
 
-  <!-- finished -->
-  <div id="ended-screen" class="screen hidden min-h-screen flex flex-col items-center justify-center gap-5 p-6">
-    <h2 class="text-2xl font-bold" data-i18n="student.examOver">Waktu Habis / Ujian Selesai</h2>
-    <div id="final-results" class="card w-full max-w-md"></div>
-  </div>
+  <!-- exam results are shown as a modal (window.ui.modal) over whatever screen the
+       student was on — see showResultsModal() in app.js. No dead-end screen. -->
 
   <script src="/shared/i18n.js"></script>
   <script src="/shared/vendor/xterm.min.js"></script>
