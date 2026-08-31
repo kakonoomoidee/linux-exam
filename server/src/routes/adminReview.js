@@ -23,24 +23,6 @@ router.post('/participants/:participantId/force-unlock', async (req, res) => {
   res.json({ ok: true });
 });
 
-/** Full review board for one session x one question: every participant's
- * auto result + their full command log for that question, ready to override. */
-router.get('/sessions/:sessionId/questions/:questionId', async (req, res) => {
-  const { sessionId, questionId } = req.params;
-  const question = await Question.findById(questionId);
-  if (!question) return res.status(404).json({ error: 'Soal tidak ditemukan' });
-
-  const base = await Submission.listForSessionQuestion(sessionId, questionId);
-  const rows = await Promise.all(
-    base.map(async (s) => ({
-      ...s,
-      command_log: await CommandLog.listForParticipantQuestion(s.participant_id, questionId),
-    }))
-  );
-
-  res.json({ question, submissions: rows });
-});
-
 /** Kelas values present in a session, for the "Per Kelas" review picker. */
 router.get('/sessions/:sessionId/kelas', async (req, res) => {
   const session = await Session.findById(req.params.sessionId);

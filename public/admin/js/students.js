@@ -109,28 +109,28 @@ function studentRow(s) {
 }
 
 async function openStudentForm(s) {
-  const { isConfirmed, value } = await window.Swal.fire({
+  const { isConfirmed, value } = await window.ui.modal.fire({
     title: t('admin.editStudent'),
     html: `
-      <div style="text-align:left;display:flex;flex-direction:column;gap:8px">
-        <label>${stuEsc(t('common.nim'))}
-          <input class="swal2-input" style="margin:4px 0" value="${stuEsc(s.nim)}" disabled>
-        </label>
-        <label>${stuEsc(t('common.name'))}
-          <input id="sf-name" class="swal2-input" style="margin:4px 0" value="${stuEsc(s.name || '')}">
-        </label>
-        <label>${stuEsc(t('common.kelas'))}
-          <input id="sf-kelas" class="swal2-input" style="margin:4px 0" maxlength="1" value="${stuEsc(s.kelas || '')}"
-            placeholder="A–F">
-          <small style="color:var(--text-faint)">${stuEsc(t('admin.kelasFieldHelp'))}</small>
-        </label>
+      <div style="text-align:left;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label class="label" for="sf-nim">${stuEsc(t('common.nim'))}</label>
+          <input id="sf-nim" class="field" value="${stuEsc(s.nim)}" disabled>
+        </div>
+        <div>
+          <label class="label" for="sf-name">${stuEsc(t('common.name'))}</label>
+          <input id="sf-name" class="field" value="${stuEsc(s.name || '')}">
+        </div>
+        <div>
+          <label class="label" for="sf-kelas">${stuEsc(t('common.kelas'))}</label>
+          <input id="sf-kelas" class="field" maxlength="1" value="${stuEsc(s.kelas || '')}" placeholder="A–F">
+          <small class="meta-faint" style="display:block;margin-top:0.35rem">${stuEsc(t('admin.kelasFieldHelp'))}</small>
+        </div>
       </div>`,
     width: 'min(480px, 94vw)',
     showCancelButton: true,
     confirmButtonText: t('common.save'),
     cancelButtonText: t('common.cancel'),
-    customClass: { popup: 'ui-swal-popup', confirmButton: 'ui-swal-confirm', cancelButton: 'ui-swal-cancel' },
-    buttonsStyling: false,
     focusConfirm: false,
     preConfirm: () => {
       const kelas = document.getElementById('sf-kelas').value.trim().toUpperCase();

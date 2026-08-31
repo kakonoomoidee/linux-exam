@@ -11,9 +11,11 @@
     confirmButtonColor: 'var(--accent)',
     cancelButtonColor: 'var(--surface-2)',
     customClass: {
+      // buttonsStyling:false strips SweetAlert2's own .swal2-styled (padding,
+      // radius, weight) — so carry the app's .btn to get a real button shape.
       popup: 'ui-swal-popup',
-      confirmButton: 'ui-swal-confirm',
-      cancelButton: 'ui-swal-cancel',
+      confirmButton: 'btn ui-swal-confirm',
+      cancelButton: 'btn ui-swal-cancel',
     },
     buttonsStyling: false,
   });
@@ -427,6 +429,38 @@
     enhanceAllSelects();
   });
 
+  // ---------------------------------------------------------------------------
+  // Kebab (⋮) menus are native <details class="kebab"> — no click-outside / Esc
+  // close and no "only one open" out of the box. Add all three, once, globally.
+  // ---------------------------------------------------------------------------
+  const openKebabs = () => document.querySelectorAll('details.kebab[open]');
+
+  document.addEventListener('click', (e) => {
+    openKebabs().forEach((d) => {
+      if (!d.contains(e.target)) d.open = false;
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    openKebabs().forEach((d) => {
+      d.open = false;
+      const s = d.querySelector('summary');
+      if (s) s.focus(); // don't lose the keyboard-nav trail
+    });
+  });
+
+  // <details> 'toggle' doesn't bubble — catch it on the capture phase.
+  document.addEventListener(
+    'toggle',
+    (e) => {
+      const d = e.target;
+      if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('kebab') || !d.open) return;
+      openKebabs().forEach((o) => o !== d && (o.open = false));
+    },
+    true
+  );
+
   /**
    * Log the user out after 10 min with no mouse/keyboard/scroll activity, with
    * a warning modal 1 min before. `onIdle` should reuse the page's existing
@@ -470,8 +504,11 @@
         }
       );
       warning = false;
+      // Only an explicit "I'm still here" resets the clock. Esc / outside-click /
+      // "Log out" all resolve falsy — do nothing: the idleTimer armed before the
+      // modal opened is still pending and fires onIdle() on its own if no
+      // activity follows in the remaining ~1 min.
       if (stay) arm();
-      else onIdle();
     }
 
     ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach((e) =>
@@ -482,6 +519,7 @@
 
   window.ui = {
     confirm: uiConfirm,
+    modal: themed, // themed Swal instance for custom form modals — .modal.fire({...})
     idleLogout,
     alert: uiAlert,
     alertPre: uiAlertPre,
