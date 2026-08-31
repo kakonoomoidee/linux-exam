@@ -141,13 +141,12 @@ async function openTranscriptModal(sessionId, nimFilter = '') {
   const { entries } = await apiFetch(`/admin/review/sessions/${sessionId}/transcript`);
   transcriptEntries = entries;
   transcriptFilter = nimFilter || '';
-  window.Swal.fire({
+  window.ui.modal.fire({
     title: transcriptFilter ? t('admin.transcriptForNim', { nim: transcriptFilter }) : t('admin.sessionTranscript'),
     html: renderTranscript(),
     width: 'min(920px, 96vw)',
     showConfirmButton: false,
     showCloseButton: true,
-    customClass: { popup: 'ui-swal-popup' },
     didOpen: () => window.ui.enhanceAllSelects(window.Swal.getPopup()),
   });
 }

@@ -37,47 +37,57 @@ document.getElementById('import-questions-btn').addEventListener('click', async 
 function questionFormHtml(q = {}) {
   const opt = (v, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`;
   return `
-    <div style="text-align:left;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;gap:8px">
-        <label style="flex:1">${qEsc(t('common.ucp'))}
-          <select id="qf-ucp" class="swal2-select" style="margin:4px 0">
+    <div style="text-align:left;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label class="label" for="qf-ucp">${qEsc(t('common.ucp'))}</label>
+          <select id="qf-ucp" class="field">
             ${[1, 2].map((u) => `<option value="${u}"${(q.ucp ?? bankUcp) === u ? ' selected' : ''}>UCP ${u}</option>`).join('')}
           </select>
-        </label>
-        <label style="flex:1">${qEsc(t('common.variant'))}
-          <input id="qf-variant" class="swal2-input" style="margin:4px 0" type="number" min="0" max="9" value="${q.variant_index ?? 0}">
-        </label>
-        <label style="flex:1">${qEsc(t('admin.order'))}
-          <input id="qf-order" class="swal2-input" style="margin:4px 0" type="number" min="1" value="${q.order_index ?? 1}">
-        </label>
+        </div>
+        <div style="flex:1">
+          <label class="label" for="qf-variant">${qEsc(t('common.variant'))}</label>
+          <input id="qf-variant" class="field" type="number" min="0" max="9" value="${q.variant_index ?? 0}">
+        </div>
+        <div style="flex:1">
+          <label class="label" for="qf-order">${qEsc(t('admin.order'))}</label>
+          <input id="qf-order" class="field" type="number" min="1" value="${q.order_index ?? 1}">
+        </div>
       </div>
-      <label>${qEsc(t('admin.storyId'))}
-        <textarea id="qf-story-id" class="swal2-textarea" style="margin:4px 0">${qEsc(q.story_text || '')}</textarea>
-      </label>
-      <label>${qEsc(t('admin.storyEn'))}
-        <textarea id="qf-story-en" class="swal2-textarea" style="margin:4px 0">${qEsc(q.story_text_en || '')}</textarea>
-      </label>
-      <div style="display:flex;gap:8px">
-        <label style="flex:1">${qEsc(t('common.points'))}
-          <input id="qf-point" class="swal2-input" style="margin:4px 0" type="number" step="0.5" value="${q.point ?? 1}">
-        </label>
-        <label style="flex:1">${qEsc(t('admin.level'))}
-          <select id="qf-level" class="swal2-select" style="margin:4px 0">
+      <div>
+        <label class="label" for="qf-story-id">${qEsc(t('admin.storyId'))}</label>
+        <textarea id="qf-story-id" class="field" rows="3">${qEsc(q.story_text || '')}</textarea>
+      </div>
+      <div>
+        <label class="label" for="qf-story-en">${qEsc(t('admin.storyEn'))}</label>
+        <textarea id="qf-story-en" class="field" rows="3">${qEsc(q.story_text_en || '')}</textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label class="label" for="qf-point">${qEsc(t('common.points'))}</label>
+          <input id="qf-point" class="field" type="number" step="0.5" value="${q.point ?? 1}">
+        </div>
+        <div style="flex:1">
+          <label class="label" for="qf-level">${qEsc(t('admin.level'))}</label>
+          <select id="qf-level" class="field">
             ${['easy', 'medium', 'hard'].map((l) => `<option value="${l}"${(q.level || 'medium') === l ? ' selected' : ''}>${qEsc(t('admin.level.' + l))}</option>`).join('')}
           </select>
-        </label>
+        </div>
       </div>
-      <label>${qEsc(t('admin.checkType'))}
-        <select id="qf-check-type" class="swal2-select" style="margin:4px 0">
+      <div>
+        <label class="label" for="qf-check-type">${qEsc(t('admin.checkType'))}</label>
+        <select id="qf-check-type" class="field">
           ${['command_match', 'state_check', 'both'].map((c) => opt(c, q.check_type || 'command_match')).join('')}
         </select>
-      </label>
-      <label>${qEsc(t('admin.acceptedPatterns'))}
-        <input id="qf-patterns" class="swal2-input" style="margin:4px 0" value="${qEsc(patternsToText(q.accepted_patterns))}" placeholder="^ls$ | ^ls -la$">
-      </label>
-      <label>${qEsc(t('admin.stateChecker'))}
-        <textarea id="qf-state-checker" class="swal2-textarea" style="margin:4px 0">${qEsc(q.state_checker_script || '')}</textarea>
-      </label>
+      </div>
+      <div>
+        <label class="label" for="qf-patterns">${qEsc(t('admin.acceptedPatterns'))}</label>
+        <input id="qf-patterns" class="field" value="${qEsc(patternsToText(q.accepted_patterns))}" placeholder="^ls$ | ^ls -la$">
+      </div>
+      <div>
+        <label class="label" for="qf-state-checker">${qEsc(t('admin.stateChecker'))}</label>
+        <textarea id="qf-state-checker" class="field" rows="4">${qEsc(q.state_checker_script || '')}</textarea>
+      </div>
     </div>`;
 }
 
@@ -110,15 +120,13 @@ function readQuestionForm() {
 }
 
 async function openQuestionForm(existing) {
-  const { isConfirmed } = await window.Swal.fire({
+  const { isConfirmed } = await window.ui.modal.fire({
     title: existing ? t('admin.editQuestion') : t('admin.addQuestion'),
     html: questionFormHtml(existing || {}),
     width: 'min(680px, 94vw)',
     showCancelButton: true,
     confirmButtonText: t('common.save'),
     cancelButtonText: t('common.cancel'),
-    customClass: { popup: 'ui-swal-popup', confirmButton: 'ui-swal-confirm', cancelButton: 'ui-swal-cancel' },
-    buttonsStyling: false,
     focusConfirm: false,
     didOpen: () => window.ui.enhanceAllSelects(window.Swal.getPopup()),
     preConfirm: () => {
