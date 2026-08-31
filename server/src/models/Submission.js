@@ -102,42 +102,6 @@ const Submission = {
     );
   },
 
-  listForSessionQuestion(sessionId, questionId) {
-    return db.all(
-      `SELECT s.*, sp.id as participant_id, u.nim, u.name, u.kelas
-       FROM submissions s
-       JOIN session_participants sp ON sp.id = s.participant_id
-       JOIN users u ON u.id = sp.user_id
-       WHERE sp.session_id = $1 AND s.question_id = $2
-       ORDER BY u.nim`,
-      [sessionId, questionId]
-    );
-  },
-
-  /**
-   * "Per Kelas" review: every question served to the students of one kelas in a
-   * session (their variant × the session's UCP), LEFT-joined to each student's
-   * submission so a no-show still shows up with a null result. Ordered so the
-   * caller can chunk it straight into variant -> question -> students.
-   */
-  listForSessionKelas(sessionId, kelas) {
-    return db.all(
-      `SELECT sp.id AS participant_id, sp.variant_index,
-              u.nim, u.name, u.kelas,
-              q.id AS question_id, q.order_index, q.story_text, q.story_text_en,
-              q.point, q.check_type, q.accepted_patterns, q.state_checker_script, q.ucp,
-              s.auto_result, s.auto_score, s.final_score, s.matched_command_log_id
-       FROM session_participants sp
-       JOIN users u ON u.id = sp.user_id
-       JOIN sessions se ON se.id = sp.session_id
-       JOIN question_variants qv ON qv.variant_index = sp.variant_index
-       JOIN questions q ON q.variant_id = qv.id AND q.ucp = se.ucp
-       LEFT JOIN submissions s ON s.participant_id = sp.id AND s.question_id = q.id
-       WHERE sp.session_id = $1 AND u.kelas = $2
-       ORDER BY sp.variant_index, q.order_index, u.nim`,
-      [sessionId, kelas]
-    );
-  },
 };
 
 module.exports = { CommandLog, Submission };

@@ -1,11 +1,10 @@
 // API, t, adminToken, readRole, apiFetch live in api.js (loaded before this file).
 
-/** Show/hide instruktur-only controls (sidebar links + [data-role="instruktur-visible"]). */
+/** Instruktur-only controls (sidebar links, create/delete buttons) are hidden by
+ *  theme.css until <html> has .is-instruktur. An inline <head> script sets it
+ *  pre-paint from the stored token; this re-syncs it after a fresh login. */
 function applyRoleVisibility() {
-  const isInstruktur = window.adminRole === 'instruktur';
-  document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {
-    el.hidden = !isInstruktur;
-  });
+  document.documentElement.classList.toggle('is-instruktur', window.adminRole === 'instruktur');
 }
 
 document.getElementById('admin-login-btn').addEventListener('click', async () => {

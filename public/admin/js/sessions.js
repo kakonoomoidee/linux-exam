@@ -20,6 +20,7 @@ async function loadSessions() {
   list.innerHTML = `<div class="row-list">${skeletonRows(3)}</div>`;
   const sessions = await apiFetch('/admin/sessions');
   const statusTone = { pending: 'gray', running: 'green', ended: 'gray' };
+  const isInstruktur = window.adminRole === 'instruktur'; // asisten: no delete
 
   if (sessions.length === 0) {
     list.innerHTML = emptyState(t('admin.noSessionsTitle'), t('admin.noSessionsHint'));
@@ -46,7 +47,7 @@ async function loadSessions() {
               <summary aria-label="${t('common.actions')}">⋮</summary>
               <div class="kebab-menu">
                 <button class="kebab-item session-open-menu" data-id="${s.id}">${t('admin.openSession')}</button>
-                <button class="kebab-item danger session-delete" data-id="${s.id}">${t('admin.deleteSession')}</button>
+                ${isInstruktur ? `<button class="kebab-item danger session-delete" data-id="${s.id}">${t('admin.deleteSession')}</button>` : ''}
               </div>
             </details>
           </div>

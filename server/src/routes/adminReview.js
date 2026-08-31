@@ -23,68 +23,6 @@ router.post('/participants/:participantId/force-unlock', async (req, res) => {
   res.json({ ok: true });
 });
 
-/** Kelas values present in a session, for the "Per Kelas" review picker. */
-router.get('/sessions/:sessionId/kelas', async (req, res) => {
-  const session = await Session.findById(req.params.sessionId);
-  if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
-  res.json({ kelas: await Session.listKelasForSession(session.id) });
-});
-
-/**
- * "Per Kelas" review: one continuous read of everything a kelas did in a
- * session, grouped by variant (a kelas spans many NIM-derived variants), then
- * by question in order, then every student's result for it. Reuses the
- * per-question command-log fetch.
- * ponytail: N+1 command-log fetch per (student, question); fine at exam scale
- * (one kelas ≈ ≤30 students × ~5 questions). Batch if a kelas ever tops ~50.
- */
-router.get('/sessions/:sessionId/kelas/:kelas', async (req, res) => {
-  const session = await Session.findById(req.params.sessionId);
-  if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
-  const kelas = String(req.params.kelas).toUpperCase();
-
-  const flat = await Submission.listForSessionKelas(session.id, kelas);
-
-  // flat is ordered variant_index, order_index, nim -> chunk it up.
-  const groups = [];
-  const byVariant = new Map();
-  for (const row of flat) {
-    if (!byVariant.has(row.variant_index)) {
-      const g = { variant_index: row.variant_index, questions: [] };
-      byVariant.set(row.variant_index, g);
-      groups.push(g);
-    }
-    const group = byVariant.get(row.variant_index);
-    let q = group.questions.find((x) => x.id === row.question_id);
-    if (!q) {
-      q = {
-        id: row.question_id,
-        order_index: row.order_index,
-        story_text: row.story_text,
-        story_text_en: row.story_text_en,
-        point: row.point,
-        check_type: row.check_type,
-        accepted_patterns: row.accepted_patterns,
-        ucp: row.ucp,
-        submissions: [],
-      };
-      group.questions.push(q);
-    }
-    q.submissions.push({
-      participant_id: row.participant_id,
-      nim: row.nim,
-      name: row.name,
-      auto_result: row.auto_result,
-      auto_score: row.auto_score,
-      final_score: row.final_score,
-      matched_command_log_id: row.matched_command_log_id,
-      command_log: await CommandLog.listForParticipantQuestion(row.participant_id, row.question_id),
-    });
-  }
-
-  res.json({ session, kelas, groups });
-});
-
 /** Manual override: score is a fraction 0/0.25/0.5/0.75/1 of the question's point value. */
 router.patch('/submissions/:participantId/:questionId', async (req, res) => {
   const { participantId, questionId } = req.params;
@@ -96,17 +34,6 @@ router.patch('/submissions/:participantId/:questionId', async (req, res) => {
   const finalScore = fraction * question.point;
   const updated = await Submission.overrideScore(participantId, questionId, finalScore, req.user.id);
   res.json(updated);
-});
-
-/** Bulk-accept: apply auto_score as final_score for every submission still un-reviewed for a question. */
-router.post('/sessions/:sessionId/questions/:questionId/bulk-accept-auto', async (req, res) => {
-  const { sessionId, questionId } = req.params;
-  const rows = await Submission.listForSessionQuestion(sessionId, questionId);
-  const pending = rows.filter((s) => s.final_score === null || s.final_score === undefined);
-  for (const s of pending) {
-    await Submission.overrideScore(s.participant_id, questionId, s.auto_score, req.user.id);
-  }
-  res.json({ updatedCount: pending.length });
 });
 
 /**

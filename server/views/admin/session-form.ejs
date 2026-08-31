@@ -7,6 +7,10 @@
   <script>window.__I18N__ = <%- localesScript %>;</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/shared/theme.css" />
+  <!-- Gate instruktur-only chrome before first paint (theme.css hides
+       [data-role="instruktur-visible"] until <html> gets .is-instruktur) so the
+       sidebar doesn't shift after render. Mirrors readRole() in api.js. -->
+  <script>try{if(JSON.parse(atob((localStorage.getItem('tekser_admin_token')||'').split('.')[1]||'')).role==='instruktur')document.documentElement.classList.add('is-instruktur');}catch(e){}</script>
 </head>
 <body class="min-h-screen">
 
@@ -19,7 +23,7 @@
     <%- include('partials/sidebar', { standalone: true, active: 'sessions' }) %>
 
     <main class="main-pane">
-      <div class="max-w-[min(94%,88rem)] mx-auto space-y-5">
+      <div class="pane-wrap">
         <a href="/admin" class="inline-block text-sm text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
           data-i18n="admin.backToSessions">← Kembali ke daftar sesi</a>
 
@@ -48,7 +52,8 @@
           </select>
         </div>
       </div>
-      <button id="create-btn" class="btn btn-primary btn-sm mt-3" data-i18n="admin.createSessionBtn">Buat Sesi</button>
+      <button id="create-btn" class="btn btn-primary btn-sm mt-3" data-role="instruktur-visible"
+        data-i18n="admin.createSessionBtn">Buat Sesi</button>
       <p id="create-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
     </div>
 

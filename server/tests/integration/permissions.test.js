@@ -76,6 +76,38 @@ describe('shared staff endpoints allow BOTH instruktur and asisten', () => {
   });
 });
 
+describe('session create/delete are instruktur-only; start stays open to asisten', () => {
+  test('POST /api/admin/sessions -> 403 for asisten, 201 for instruktur', async () => {
+    const denied = await request(app)
+      .post('/api/admin/sessions')
+      .set(as(asisten))
+      .send({ name: 'Blocked' });
+    expect(denied.status).toBe(403);
+
+    const ok = await request(app)
+      .post('/api/admin/sessions')
+      .set(as(instruktur))
+      .send({ name: 'Allowed' });
+    expect(ok.status).toBe(201);
+  });
+
+  test('DELETE /api/admin/sessions/:id -> 403 for asisten, 200 for instruktur', async () => {
+    const session = await createSession();
+
+    const denied = await request(app).delete(`/api/admin/sessions/${session.id}`).set(as(asisten));
+    expect(denied.status).toBe(403);
+
+    const ok = await request(app).delete(`/api/admin/sessions/${session.id}`).set(as(instruktur));
+    expect(ok.status).toBe(200);
+  });
+
+  test('POST /api/admin/sessions/:id/start -> asisten may still start (not 403)', async () => {
+    const session = await createSession();
+    const res = await request(app).post(`/api/admin/sessions/${session.id}/start`).set(as(asisten));
+    expect(res.status).not.toBe(403);
+  });
+});
+
 describe('staff account management', () => {
   test('instruktur creates an asisten, then it appears in the list', async () => {
     const created = await request(app)

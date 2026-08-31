@@ -22,10 +22,8 @@
   document.getElementById('admin-logout-btn')?.addEventListener('click', logout);
   window.ui.idleLogout({ onIdle: logout });
 
-  // Same role-gating the dashboard applies to the shared sidebar partial.
-  document.querySelectorAll('[data-role="instruktur-visible"]').forEach((el) => {
-    el.hidden = window.adminRole !== 'instruktur';
-  });
+  // Instruktur-only chrome (sidebar links, #create-btn) is hidden pre-paint by
+  // theme.css + the inline <head> script — see session-form.ejs. No JS toggle.
 
   const CONTAINER_TONE = {
     active: 'green', running: 'green', ready: 'blue', provisioning: 'amber',
