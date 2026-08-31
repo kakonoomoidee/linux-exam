@@ -1,4 +1,4 @@
-<section id="tab-review" class="tab-content hidden max-w-[min(94%,88rem)] mx-auto space-y-5">
+<section id="tab-review" class="tab-content hidden pane-wrap">
 
   <header class="mb-6">
     <h1 class="page-title" data-i18n="admin.tabReview">Review Nilai</h1>
@@ -6,21 +6,16 @@
   </header>
 
   <div class="card">
-    <div id="review-mode-toggle" class="flex gap-1 mb-4" role="group" aria-label="Mode review">
-      <button type="button" id="review-mode-mhs" class="btn btn-sm btn-primary" aria-pressed="true"
-        data-i18n="admin.reviewModeMhs">Per Mahasiswa</button>
-      <button type="button" id="review-mode-kelas" class="btn btn-sm btn-ghost" aria-pressed="false"
-        data-i18n="admin.reviewModeKelas">Per Kelas</button>
-    </div>
     <div class="flex flex-wrap gap-2 items-center mb-4">
       <select id="review-session-select" class="field w-auto min-w-[180px]"></select>
-      <select id="review-kelas-select" class="field w-auto min-w-[160px] hidden"></select>
+      <select id="review-mhs-kelas-select" class="field w-auto min-w-[150px]"
+        aria-label="Pilih kelas"></select>
+      <input id="review-mhs-search" type="search" autocomplete="off"
+        class="field w-auto min-w-[200px]" data-i18n-ph="admin.reviewSearchPlaceholder"
+        placeholder="Cari NIM / nama…" />
       <select id="review-mhs-select" class="field w-auto flex-1 min-w-[240px]"
         aria-label="Pilih mahasiswa"></select>
-      <input id="review-kelas-search" type="search" autocomplete="off"
-        class="field w-auto min-w-[200px] hidden" data-i18n-ph="admin.reviewSearchPlaceholder"
-        placeholder="Cari NIM / nama…" />
-      <span id="review-kelas-search-empty" class="rk-search-empty hidden"
+      <span id="review-mhs-search-empty" class="rk-search-empty hidden"
         data-i18n="admin.reviewSearchNoHit">Tidak ada yang cocok</span>
       <button id="review-load-btn" class="btn btn-primary btn-sm" data-i18n="admin.showBtn">Tampilkan</button>
       <a id="export-csv-link" href="#" download

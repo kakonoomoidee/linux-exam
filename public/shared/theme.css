@@ -172,6 +172,17 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 }
 .main-pane { min-width: 0; padding: 2rem clamp(1rem, 4vw, 2.75rem); }
 
+/* Content column — render-blocking equivalent of the old
+   `max-w-[min(94%,88rem)] mx-auto space-y-5` Tailwind classes, so the width is
+   right at first paint instead of snapping in once the Tailwind CDN loads. */
+.pane-wrap { max-width: min(94%, 88rem); margin-inline: auto; }
+.pane-wrap > * + * { margin-top: 1.25rem; }
+
+/* Instruktur-only chrome (sidebar links, create/delete buttons) is hidden until
+   an inline <head> script adds .is-instruktur to <html> — pre-paint, so nothing
+   shifts after render. app.js keeps the class in sync after a fresh login. */
+html:not(.is-instruktur) [data-role="instruktur-visible"] { display: none !important; }
+
 @media (max-width: 860px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar {

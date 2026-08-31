@@ -84,18 +84,6 @@ const Session = {
     );
   },
 
-  async listKelasForSession(sessionId) {
-    const rows = await db.all(
-      `SELECT DISTINCT u.kelas
-       FROM session_participants sp
-       JOIN users u ON u.id = sp.user_id
-       WHERE sp.session_id = $1 AND u.kelas IS NOT NULL
-       ORDER BY u.kelas`,
-      [sessionId]
-    );
-    return rows.map((r) => r.kelas);
-  },
-
   getParticipant(participantId) {
     return db.get(
       `SELECT sp.*, u.nim, u.name, u.kelas, s.ucp

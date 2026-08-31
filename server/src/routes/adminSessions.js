@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAdmin } = require('../middleware/auth');
+const { requireStaff, requireInstruktur } = require('../middleware/auth');
 const Session = require('../models/Session');
 const User = require('../models/User');
 const { normalizeKelas } = require('../lib/kelas');
@@ -7,10 +7,12 @@ const examService = require('../services/examService');
 const config = require('../config');
 
 const router = express.Router();
-router.use(requireAdmin);
+// Baseline: any staff (instruktur + asisten) can list/view a session, manage its
+// roster and start the exam. Creating and deleting a session is instruktur-only.
+router.use(requireStaff);
 
 // Create a new exam session (not started yet)
-router.post('/', async (req, res) => {
+router.post('/', requireInstruktur, async (req, res) => {
   const { name, duration_minutes, ucp } = req.body;
   if (!name) return res.status(400).json({ error: 'name wajib diisi' });
   // Selector is required in the UI; API defaults a missing value to UCP 1, but a
@@ -105,7 +107,7 @@ router.get('/:id/participants', async (req, res) => {
   res.json(await Session.listParticipants(req.params.id));
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireInstruktur, async (req, res) => {
   const session = await Session.findById(req.params.id);
   if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
   await examService.deleteSession(session.id);

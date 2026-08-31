@@ -7,6 +7,8 @@
   <script>window.__I18N__ = <%- localesScript %>;</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/shared/theme.css" />
+  <!-- Gate instruktur-only chrome before first paint; app.js re-syncs after login. -->
+  <script>try{if(JSON.parse(atob((localStorage.getItem('tekser_admin_token')||'').split('.')[1]||'')).role==='instruktur')document.documentElement.classList.add('is-instruktur');}catch(e){}</script>
 </head>
 <body class="min-h-screen">
 
