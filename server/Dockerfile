@@ -1,5 +1,5 @@
 # Build context is the repo root (needs both server/ and public/).
-FROM node:20-bookworm-slim
+FROM node:26-bookworm-slim
 WORKDIR /app
 
 COPY server/package.json server/package-lock.json ./
