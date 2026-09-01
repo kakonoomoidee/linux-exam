@@ -39,12 +39,13 @@
   <!-- forgot password: NIM -> OTP (via Telegram) -> new password (shared with /admin) -->
   <%- include('../partials/forgot-password-screen') %>
 
-  <!-- forced password change on first login -->
+  <!-- forced password change on first login (full-page, no sidebar — by design).
+       Voluntary change-password is the in-shell #change-pw-view on the dashboard. -->
   <div id="change-password-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
     <div class="card w-full max-w-sm text-center">
       <div class="brand-mark mx-auto mb-4">&gt;_</div>
       <h1 class="text-lg font-bold mb-1" data-i18n="student.changePwTitle">Ganti Password</h1>
-      <p id="change-pw-subtitle" class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
+      <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
         Password default harus diganti sebelum melanjutkan.
       </p>
       <label class="label text-left" for="current-pw-input" data-i18n="student.currentPw">Password saat ini</label>
@@ -54,8 +55,6 @@
       <label class="label text-left" for="confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
       <input id="confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
       <button id="change-pw-btn" class="btn btn-primary btn-block" data-i18n="student.changePwBtn">Simpan</button>
-      <button id="change-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2 hidden"
-        data-i18n="student.backToDashboard">Kembali ke Dashboard</button>
       <p id="change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
     </div>
   </div>
@@ -103,24 +102,66 @@
       </aside>
 
       <main class="main-pane">
-        <header class="mb-6">
-          <h1 class="page-title" data-i18n="student.title">Ujian Praktikum Linux</h1>
-          <p class="page-subtitle" data-i18n="student.dashSubtitle">Gabung ke sesi ujian dan lihat riwayat nilaimu.</p>
-        </header>
+        <div id="dash-default-view">
+          <header class="mb-6">
+            <h1 class="page-title" data-i18n="student.title">Ujian Praktikum Linux</h1>
+            <p class="page-subtitle" data-i18n="student.dashSubtitle">Gabung ke sesi ujian dan lihat riwayat nilaimu.</p>
+          </header>
 
-        <div class="card">
-          <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
-          <div class="flex gap-2">
-            <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
-              maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
-            <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+          <div class="card">
+            <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
+            <div class="flex gap-2">
+              <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
+                maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
+              <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+            </div>
+            <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
           </div>
-          <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
+
+          <div class="card">
+            <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
+            <div id="history-list"></div>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
-          <div id="history-list"></div>
+        <!-- voluntary change-password: rendered here so the sidebar stays visible
+             (the forced first-login gate is the separate full-page #change-password-screen) -->
+        <div id="change-pw-view" class="hidden">
+          <div class="card w-full max-w-sm">
+            <div class="card-title" data-i18n="student.changePwLink">Ganti Password</div>
+            <p class="text-sm text-[color:var(--text-faint)] mb-4" data-i18n="student.changePwVoluntarySubtitle">
+              Ganti password akunmu. Kamu akan tetap masuk setelah menyimpan.
+            </p>
+
+            <div id="vol-pw-need-tg" class="hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3 text-sm text-[color:var(--text-muted)] mb-4">
+              <p data-i18n="student.changePwNeedTelegram">Hubungkan Telegram dulu untuk mengganti password.</p>
+              <button id="vol-pw-connect-tg" class="btn btn-ghost btn-sm mt-2" data-i18n="student.telegramHeading">Hubungkan Telegram</button>
+            </div>
+
+            <div id="vol-pw-fields">
+              <label class="label" for="vol-current-pw" data-i18n="student.currentPw">Password saat ini</label>
+              <input id="vol-current-pw" type="password" class="field mb-3" autocomplete="off" />
+
+              <button id="vol-send-otp-btn" class="btn btn-ghost btn-sm btn-block mb-1"
+                data-i18n="student.changePwSendOtp">Kirim kode ke Telegram</button>
+              <p id="vol-otp-hint" class="text-xs text-[color:var(--text-faint)] mb-3 min-h-[16px]"></p>
+
+              <label class="label" for="vol-otp-input" data-i18n="student.changePwOtpLabel">Kode OTP Telegram</label>
+              <input id="vol-otp-input" type="text" inputmode="numeric" maxlength="6"
+                class="field mb-3 tracking-[0.3em] text-center font-mono" autocomplete="off" />
+
+              <label class="label" for="vol-new-pw" data-i18n="student.newPw">Password baru</label>
+              <input id="vol-new-pw" type="password" class="field mb-3" autocomplete="off" />
+              <label class="label" for="vol-confirm-pw" data-i18n="student.confirmPw">Ulangi password baru</label>
+              <input id="vol-confirm-pw" type="password" class="field mb-4" autocomplete="off" />
+
+              <button id="vol-change-pw-btn" class="btn btn-primary btn-block"
+                data-i18n="student.changePwBtn">Simpan</button>
+              <button id="vol-change-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2"
+                data-i18n="student.backToDashboard">Kembali ke Dashboard</button>
+              <p id="vol-change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+            </div>
+          </div>
         </div>
       </main>
     </div>

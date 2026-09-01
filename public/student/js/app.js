@@ -8,7 +8,6 @@ let lastExamData = null; // kept so the question panel can re-render on language
 let examLocked = false;   // anti-cheat: true while the tab-switch lockdown overlay is up
 let pendingExamData = null; // container is ready; held until the student clicks "Mulai"
 let joinPollTimer = null;   // re-polls /me/join while the session is still 'pending'
-let pwChangeVoluntary = false; // true when the student opened change-password from the dashboard (not forced)
 
 const screens = {
   login: document.getElementById('login-screen'),
@@ -33,8 +32,12 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
-document.getElementById('change-pw-link').addEventListener('click', () => showChangePassword(true));
-document.getElementById('change-pw-back-btn').addEventListener('click', enterDashboard);
+document.getElementById('change-pw-link').addEventListener('click', showVoluntaryPasswordChange);
+document.getElementById('vol-change-pw-back-btn').addEventListener('click', showDashDefault);
+document.getElementById('vol-send-otp-btn').addEventListener('click', sendChangePwOtp);
+document.getElementById('vol-change-pw-btn').addEventListener('click', submitVoluntaryPasswordChange);
+document.getElementById('vol-pw-connect-tg').addEventListener('click',
+  () => document.getElementById('telegram-connect-btn').click());
 // Idle auto-logout everywhere EXCEPT the active exam screen — sitting and
 // thinking is normal mid-exam, and the server-side clock runs regardless.
 window.ui.idleLogout({
@@ -98,6 +101,7 @@ async function login() {
   }
 }
 
+/** Forced first-login password change (full-page gate, single-factor). */
 async function submitPasswordChange() {
   const currentPassword = document.getElementById('current-pw-input').value;
   const newPassword = document.getElementById('new-pw-input').value;
@@ -122,27 +126,14 @@ async function submitPasswordChange() {
     token = data.token; // fresh token, no longer must-change
     localStorage.setItem('tekser_token', token);
     persistUser(storedUser(), false);
-    const wasVoluntary = pwChangeVoluntary;
     enterDashboard();
-    if (wasVoluntary) window.ui.toast(t('student.changePwDone'));
   } catch (err) {
     errorEl.textContent = window.i18n.apiError(err.message) || t('common.requestFailed', { status: 0 });
   }
 }
 
-/**
- * Show the change-password screen. `voluntary` = opened from the dashboard sidebar
- * (offer a way back, neutral copy); otherwise it's the forced first-login gate.
- */
-function showChangePassword(voluntary) {
-  pwChangeVoluntary = !!voluntary;
-  const subtitle = document.getElementById('change-pw-subtitle');
-  subtitle.setAttribute(
-    'data-i18n',
-    voluntary ? 'student.changePwVoluntarySubtitle' : 'student.changePwSubtitle'
-  );
-  subtitle.textContent = t(subtitle.getAttribute('data-i18n'));
-  document.getElementById('change-pw-back-btn').classList.toggle('hidden', !voluntary);
+/** Show the forced first-login change-password gate. */
+function showChangePassword() {
   ['current-pw-input', 'new-pw-input', 'confirm-pw-input'].forEach((id) => {
     document.getElementById(id).value = '';
   });
@@ -150,10 +141,113 @@ function showChangePassword(voluntary) {
   showScreen('changePassword');
 }
 
+// ---- voluntary change-password (from the sidebar; stays inside the dashboard shell) ----
+
+/** Open the in-shell voluntary panel. Requires Telegram bound (OTP is the 2nd factor). */
+async function showVoluntaryPasswordChange() {
+  showScreen('dashboard');
+  document.getElementById('dash-default-view').classList.add('hidden');
+  document.getElementById('change-pw-view').classList.remove('hidden');
+  ['vol-current-pw', 'vol-otp-input', 'vol-new-pw', 'vol-confirm-pw'].forEach((id) => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('vol-otp-hint').textContent = '';
+  document.getElementById('vol-change-pw-error').textContent = '';
+
+  await window.telegramConnect.refresh();
+  const linked = window.telegramConnect.isLinked();
+  document.getElementById('vol-pw-fields').classList.toggle('hidden', !linked);
+  document.getElementById('vol-pw-need-tg').classList.toggle('hidden', linked);
+}
+
+function showDashDefault() {
+  document.getElementById('change-pw-view').classList.add('hidden');
+  document.getElementById('dash-default-view').classList.remove('hidden');
+}
+
+/** Step 1: server checks the current password, then sends an OTP to the student's Telegram. */
+async function sendChangePwOtp() {
+  const currentPassword = document.getElementById('vol-current-pw').value;
+  const errorEl = document.getElementById('vol-change-pw-error');
+  const hintEl = document.getElementById('vol-otp-hint');
+  const btn = document.getElementById('vol-send-otp-btn');
+  errorEl.textContent = '';
+  if (!currentPassword) return;
+
+  try {
+    const res = await fetch(`${API}/me/password/change-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ currentPassword }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.error === 'telegram_not_linked') {
+        document.getElementById('vol-pw-fields').classList.add('hidden');
+        document.getElementById('vol-pw-need-tg').classList.remove('hidden');
+        return;
+      }
+      throw new Error(data.error);
+    }
+
+    hintEl.textContent = t('student.changePwOtpSent');
+    btn.disabled = true;
+    let left = 30;
+    btn.textContent = t('common.resend') + ` (${left})`;
+    const iv = setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(iv);
+        btn.disabled = false;
+        btn.textContent = t('common.resend');
+      } else {
+        btn.textContent = t('common.resend') + ` (${left})`;
+      }
+    }, 1000);
+  } catch (err) {
+    errorEl.textContent = window.i18n.apiError(err.message) || t('common.requestFailed', { status: 0 });
+  }
+}
+
+/** Step 2: current password + OTP + new password together. */
+async function submitVoluntaryPasswordChange() {
+  const currentPassword = document.getElementById('vol-current-pw').value;
+  const otp = document.getElementById('vol-otp-input').value.trim();
+  const newPassword = document.getElementById('vol-new-pw').value;
+  const confirm = document.getElementById('vol-confirm-pw').value;
+  const errorEl = document.getElementById('vol-change-pw-error');
+  errorEl.textContent = '';
+  if (!currentPassword || !otp || !newPassword) return;
+  if (newPassword !== confirm) {
+    errorEl.textContent = t('student.pwMismatch');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/me/password/verified`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ currentPassword, newPassword, otp }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    token = data.token;
+    localStorage.setItem('tekser_token', token);
+    persistUser(storedUser(), false);
+    showDashDefault();
+    window.ui.toast(t('student.changePwDone'));
+  } catch (err) {
+    errorEl.textContent = window.i18n.apiError(err.message) || t('common.requestFailed', { status: 0 });
+  }
+}
+
 function enterDashboard() {
   clearTimeout(joinPollTimer);
   const user = storedUser();
   showScreen('dashboard');
+  showDashDefault(); // never land on a stale voluntary change-password panel
+
   document.getElementById('dash-name').textContent = user.name || user.nim || '';
   document.getElementById('dash-nim').textContent = user.nim || '';
   const kelasEl = document.getElementById('dash-kelas');

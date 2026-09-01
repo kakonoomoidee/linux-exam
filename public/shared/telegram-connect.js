@@ -15,10 +15,12 @@
   let getToken = () => null;
   let pollTimer = null;
   let botUsername = null; // cached from the last status/link-code response
+  let lastLinked = false; // cached from the last renderStatus, for isLinked()
 
   const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
 
   function renderStatus({ linked, username, botUsername: bot } = {}) {
+    lastLinked = !!linked;
     if (bot != null) botUsername = bot;
     const badge = $('telegram-status');
     const connectBtn = $('telegram-connect-btn');
@@ -147,5 +149,5 @@
     refresh();
   }
 
-  window.telegramConnect = { init, refresh };
+  window.telegramConnect = { init, refresh, isLinked: () => lastLinked };
 })();
