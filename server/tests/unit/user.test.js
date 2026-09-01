@@ -84,6 +84,14 @@ describe('User.findOrCreateStudent', () => {
     await expect(User.createStaff({ nim: 'x', password: 'p', role: 'student' })).rejects.toThrow();
   });
 
+  test('setTelegramBinding works for staff, not just students', async () => {
+    const staff = await User.createStaff({ nim: 'inst2', name: 'Dosen', password: 'pw', role: 'instruktur' });
+    const bound = await User.setTelegramBinding(staff.id, { chatId: '424242', username: 'dosen' });
+    expect(bound.telegram_chat_id).toBe('424242');
+    const cleared = await User.setTelegramBinding(staff.id, {});
+    expect(cleared.telegram_chat_id).toBeNull();
+  });
+
   test('concurrent calls race, but the unique constraint still leaves exactly one row', async () => {
     // findOrCreateStudent is not race-safe on its own (check-then-insert); the
     // users.nim UNIQUE constraint is what actually prevents a duplicate.

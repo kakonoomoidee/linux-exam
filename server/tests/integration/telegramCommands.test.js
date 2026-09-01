@@ -1,7 +1,7 @@
 const request = require('supertest');
 const buildApp = require('../../src/app');
 const { useTestDb } = require('../helpers/db');
-const { createStudent } = require('../helpers/factory');
+const { createStudent, createAdmin } = require('../helpers/factory');
 const db = require('../../src/db/connection');
 const telegram = require('../../src/services/telegramClient');
 const { handleMessage } = require('../../src/services/telegramBot');
@@ -68,6 +68,22 @@ describe('/changepass', () => {
     for (let i = 0; i < 3; i++) await send('/changepass');
     await send('/changepass');
     expect(lastReply()).toMatch(/terlalu banyak/i);
+  });
+
+  test('works for a bound staff chat too, and the OTP resets the staff password', async () => {
+    const staff = await createAdmin({ nim: 'dosenTg', role: 'instruktur' });
+    await db.run('UPDATE users SET telegram_chat_id = $1 WHERE id = $2', [String(CHAT), staff.id]);
+    await send('/changepass');
+    const row = await db.get(`SELECT * FROM password_reset_otps WHERE user_id = $1 AND consumed_at IS NULL`, [staff.id]);
+    expect(row).toBeTruthy();
+    const otp = sixDigits(lastReply());
+
+    const reset = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ nim: 'dosenTg', otp, newPassword: 'staff-fresh-pass' });
+    expect(reset.status).toBe(200);
+    const login = await request(app).post('/api/auth/login/admin').send({ nim: 'dosenTg', password: 'staff-fresh-pass' });
+    expect(login.status).toBe(200);
   });
 });
 

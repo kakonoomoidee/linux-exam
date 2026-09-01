@@ -5,6 +5,7 @@ const { createStudent, createAdmin, createAsisten } = require('../helpers/factor
 const db = require('../../src/db/connection');
 const telegram = require('../../src/services/telegramClient');
 const telegramBot = require('../../src/services/telegramBot');
+const config = require('../../src/config');
 
 useTestDb();
 const app = buildApp();
@@ -58,7 +59,7 @@ describe('self-service Telegram binding', () => {
     await db.run('UPDATE users SET telegram_chat_id = $1 WHERE id = $2', ['77', s.id]);
 
     let res = await request(app).get('/api/me/telegram').set(as(s));
-    expect(res.body).toEqual({ linked: true, username: null });
+    expect(res.body).toEqual({ linked: true, username: null, botUsername: config.telegramBotUsername });
 
     await request(app).delete('/api/me/telegram').set(as(s)).expect(200);
     res = await request(app).get('/api/me/telegram').set(as(s));

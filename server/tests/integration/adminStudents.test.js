@@ -67,7 +67,7 @@ describe('POST /api/admin/students/import', () => {
 
   test('rows with an invalid kelas are reported with their NIM, not silently dropped', async () => {
     const file = rosterFile([
-      { NIM: '20220140051', Nama: 'Andi', Kelas: 'TI-3A' },
+      { NIM: '20220140051', Nama: 'Andi', Kelas: 'TI_3A' },
       { NIM: '', Nama: 'No NIM', Kelas: 'A' },
       { NIM: '20220140052', Nama: 'Bella', Kelas: 'A' },
     ]);
@@ -75,7 +75,7 @@ describe('POST /api/admin/students/import', () => {
     expect(res.status).toBe(200);
     expect(res.body.created).toBe(1);
     expect(res.body.errors).toHaveLength(2);
-    expect(res.body.errors.map((e) => e.error).join(' ')).toMatch(/kelas harus satu huruf A–F/);
+    expect(res.body.errors.map((e) => e.error).join(' ')).toMatch(/format kelas tidak valid/);
     expect(res.body.errors.some((e) => e.nim === '20220140051')).toBe(true);
     expect(await User.findByNim('20220140051')).toBeUndefined();
   });
@@ -109,9 +109,16 @@ describe('PATCH /api/admin/students/:id', () => {
 
   test('rejects an invalid kelas', async () => {
     const s = await createStudent({ nim: '20220140055', kelas: 'A' });
-    const res = await request(app).patch(`/api/admin/students/${s.id}`).set(auth).send({ kelas: 'TI-3A' });
+    const res = await request(app).patch(`/api/admin/students/${s.id}`).set(auth).send({ kelas: 'TI_3A' });
     expect(res.status).toBe(400);
     expect((await User.findByNim('20220140055')).kelas).toBe('A'); // unchanged
+  });
+
+  test('accepts an ad-hoc class code beyond A–F', async () => {
+    const s = await createStudent({ nim: '20220140055', kelas: 'A' });
+    const res = await request(app).patch(`/api/admin/students/${s.id}`).set(auth).send({ kelas: 'ti-1a' });
+    expect(res.status).toBe(200);
+    expect(res.body.kelas).toBe('TI-1A');
   });
 
   test('empty kelas clears it', async () => {

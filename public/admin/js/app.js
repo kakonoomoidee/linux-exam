@@ -34,6 +34,16 @@ function logout() {
 }
 document.getElementById('admin-logout-btn').addEventListener('click', logout);
 
+// forgot-password flow — shared with /exam, see /shared/forgot-password.js
+function showAdminLogin() {
+  document.getElementById('forgot-password-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('admin-login-error').textContent = '';
+}
+window.forgotPassword.init({ onExit: showAdminLogin, nimSourceId: 'admin-nim' });
+document.getElementById('admin-forgot-pw-link')
+  .addEventListener('click', () => window.forgotPassword.open());
+
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
@@ -50,8 +60,10 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 });
 function boot() {
   document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('forgot-password-screen').classList.add('hidden');
   document.getElementById('dashboard-screen').classList.remove('hidden');
   applyRoleVisibility();
+  window.telegramConnect.init({ getToken: () => adminToken });
   window.ui.idleLogout({ onIdle: logout });
   window.connectAdminSocket?.();
   window.loadSessions?.();

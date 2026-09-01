@@ -7,18 +7,34 @@ const Question = require('../models/Question');
 const Session = require('../models/Session');
 const User = require('../models/User');
 const { Submission } = require('../models/Submission');
+const AuditLog = require('../models/AuditLog');
 const examService = require('../services/examService');
 const timerService = require('../services/timerService');
 const telegramBindService = require('../services/telegramBindService');
+const telegramActionService = require('../services/telegramActionService');
+const telegram = require('../services/telegramClient');
 
 const router = express.Router();
 router.use(requireAuth);
 
 const MIN_PASSWORD_LENGTH = 8;
 
+/** Shared new-password policy for every change-password path. Returns an error string or null. */
+function newPasswordError(newPassword, user) {
+  if (!newPassword || String(newPassword).length < MIN_PASSWORD_LENGTH) {
+    return `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter`;
+  }
+  if (String(newPassword) === String(user.nim)) {
+    return 'Password baru tidak boleh sama dengan NIM';
+  }
+  return null;
+}
+
 /**
- * Change password. Mounted BEFORE requirePasswordChanged so a student who still
- * must change their password can reach exactly this one endpoint.
+ * Forced first-login password change. Single-factor (current password only) by
+ * design — the student is still on the default password and has no Telegram bound.
+ * Mounted BEFORE requirePasswordChanged so a student who still must change their
+ * password can reach exactly this one endpoint.
  */
 router.post('/me/password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
@@ -28,24 +44,79 @@ router.post('/me/password', async (req, res) => {
   if (!(await checkStudentPassword(user, currentPassword))) {
     return res.status(400).json({ error: 'Password saat ini salah' });
   }
-  if (!newPassword || String(newPassword).length < MIN_PASSWORD_LENGTH) {
-    return res.status(400).json({ error: `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter` });
-  }
-  if (String(newPassword) === String(user.nim)) {
-    return res.status(400).json({ error: 'Password baru tidak boleh sama dengan NIM' });
-  }
+  const err = newPasswordError(newPassword, user);
+  if (err) return res.status(400).json({ error: err });
 
   const updated = await User.setPassword(user.id, await hash(String(newPassword)));
   res.json({ token: signToken(updated) }); // fresh token, mustChangePassword now false
 });
 
+/**
+ * Voluntary change-password, step 1: send a Telegram OTP as the second factor.
+ * The current password is verified first, so a wrong password never triggers a
+ * code. Reuses telegramActionService (action 'change_password') — same primitive
+ * as the bot's /unlink confirmation, separate from forgot-password OTPs.
+ */
+router.post('/me/password/change-otp', async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user || user.role !== 'student') return res.status(403).json({ error: 'Hanya untuk mahasiswa' });
+  if (!(await checkStudentPassword(user, req.body.currentPassword))) {
+    return res.status(400).json({ error: 'Password saat ini salah' });
+  }
+  if (!user.telegram_chat_id) return res.status(409).json({ error: 'telegram_not_linked' });
+
+  const r = await telegramActionService.requestActionOtp(user.telegram_chat_id, 'change_password');
+  if (r.throttled) return res.status(429).json({ error: 'Terlalu banyak permintaan kode. Coba lagi nanti.' });
+
+  await telegram.sendMessage(
+    user.telegram_chat_id,
+    `Kode ganti password Tekser kamu: ${r.code}\nBerlaku ${telegramActionService.ACTION_TTL_MIN} menit. Abaikan jika ini bukan kamu.`
+  );
+  res.json({ sent: true });
+});
+
+/**
+ * Voluntary change-password, step 2: current password + the Telegram OTP together.
+ */
+router.post('/me/password/verified', async (req, res) => {
+  const { currentPassword, newPassword, otp } = req.body;
+  const user = await User.findById(req.user.id);
+  if (!user || user.role !== 'student') return res.status(403).json({ error: 'Hanya untuk mahasiswa' });
+  if (!(await checkStudentPassword(user, currentPassword))) {
+    return res.status(400).json({ error: 'Password saat ini salah' });
+  }
+  if (!user.telegram_chat_id) return res.status(409).json({ error: 'telegram_not_linked' });
+
+  // Validate the new password before spending the OTP, so a policy miss doesn't
+  // force the student to request a fresh code.
+  const err = newPasswordError(newPassword, user);
+  if (err) return res.status(400).json({ error: err });
+
+  const { ok } = await telegramActionService.confirmActionOtp(user.telegram_chat_id, 'change_password', otp);
+  if (!ok) return res.status(400).json({ error: 'Kode OTP salah atau sudah kadaluarsa' });
+
+  const updated = await User.setPassword(user.id, await hash(String(newPassword)));
+  AuditLog.record({
+    actorType: 'student',
+    actorId: user.id,
+    action: 'password_changed_2fa',
+    targetUserId: user.id,
+  }).catch((e) => console.error('[audit] password_changed_2fa', e));
+  res.json({ token: signToken(updated) });
+});
+
 // Everything below is off-limits until the default password has been changed.
 router.use(requirePasswordChanged);
 
-/** Current Telegram binding state for the dashboard card. */
+/** Current Telegram binding state for the sidebar entry. `botUsername` lets the UI
+ *  show a persistent "Bot: @..." link without opening the connect modal first. */
 router.get('/me/telegram', async (req, res) => {
   const user = await User.findById(req.user.id);
-  res.json({ linked: !!(user && user.telegram_chat_id), username: (user && user.telegram_username) || null });
+  res.json({
+    linked: !!(user && user.telegram_chat_id),
+    username: (user && user.telegram_username) || null,
+    botUsername: config.telegramBotUsername,
+  });
 });
 
 /** Mint a one-time code the student sends to the bot as `/start <code>`. */

@@ -51,13 +51,18 @@ async function migrate() {
 
   // Guarded DDL (idempotent). ADD CONSTRAINT IF NOT EXISTS isn't valid Postgres,
   // so each is wrapped in a DO block that checks pg_constraint first.
-  //  1. users.kelas must be a single letter A–F (NULL passes automatically).
+  //  1. users.kelas is a short class code: A–F by default, plus ad-hoc codes
+  //     staff add from the edit form (see normalizeKelas / ALLOW_CUSTOM_KELAS).
+  //     Supersedes the old single-letter users_kelas_chk. NULL passes either way.
   //  2. questions unique key gains `ucp` so UCP 1 and UCP 2 can both number
   //     their questions 1..N within the same variant.
   await sequelize.query(`
     DO $$ BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_chk') THEN
-        ALTER TABLE users ADD CONSTRAINT users_kelas_chk CHECK (kelas ~ '^[A-F]$');
+      IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_chk') THEN
+        ALTER TABLE users DROP CONSTRAINT users_kelas_chk;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_code_chk') THEN
+        ALTER TABLE users ADD CONSTRAINT users_kelas_code_chk CHECK (kelas ~ '^[A-Z0-9-]{1,12}$');
       END IF;
       IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'questions_variant_id_order_index_key') THEN
         ALTER TABLE questions DROP CONSTRAINT questions_variant_id_order_index_key;

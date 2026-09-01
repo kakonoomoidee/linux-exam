@@ -149,7 +149,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
 .side-link {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  flex-wrap: wrap; /* a trailing status badge drops to its own line instead of overflowing the sidebar */
+  gap: 0.3rem 0.7rem;
   width: 100%;
   padding: 0.62rem 0.7rem;
   border-radius: var(--radius-sm);
@@ -163,6 +164,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-vi
   transition: background var(--dur), color var(--dur);
 }
 .side-link svg { width: 18px; height: 18px; flex: none; }
+.side-link > span:not(.badge) { min-width: 0; } /* label yields space instead of forcing overflow */
+.side-link .badge { max-width: 100%; } /* long "Terhubung sebagai @name" can't overflow the row */
 .side-link:hover { background: var(--surface-2); color: var(--text); }
 .side-link.active {
   background: var(--accent-weak);
@@ -195,7 +198,7 @@ html:not(.is-instruktur) [data-role="instruktur-visible"] { display: none !impor
     border-bottom: 1px solid var(--border);
   }
   .sidebar-brand { display: none; }
-  .side-link { width: auto; white-space: nowrap; }
+  .side-link { width: auto; white-space: nowrap; flex-wrap: nowrap; }
   .main-pane { padding: 1.25rem; }
 }
 

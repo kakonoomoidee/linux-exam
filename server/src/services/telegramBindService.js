@@ -1,8 +1,8 @@
 /**
- * Telegram account binding. Self-service half: a logged-in student asks for a
- * one-time link code, then sends `/start <code>` to the bot, which lands in
- * redeemLinkCode() and stores their chat_id. Staff can also set/override the
- * binding directly (see routes/adminStudents.js) — that path audits separately.
+ * Telegram account binding. Self-service half: a logged-in user (student or staff)
+ * asks for a one-time link code, then sends `/start <code>` to the bot, which lands
+ * in redeemLinkCode() and stores their chat_id. Staff can also set/override a
+ * student's binding directly (see routes/adminStudents.js) — that path audits separately.
  */
 const db = require('../db/connection');
 const joinCode = require('../lib/joinCode');
@@ -32,7 +32,7 @@ async function issueLinkCode(userId) {
 
 /**
  * Bot side of `/start <code>`. Replies to the chat in every branch. Sets the
- * student's telegram_chat_id / telegram_username on success and writes a
+ * user's telegram_chat_id / telegram_username on success and writes a
  * telegram_bind_self audit row.
  */
 async function redeemLinkCode(rawCode, chatId, tgUsername) {
@@ -66,7 +66,7 @@ async function redeemLinkCode(rawCode, chatId, tgUsername) {
   }
 
   await AuditLog.record({
-    actorType: 'student',
+    actorType: user.role === 'student' ? 'student' : 'staff',
     actorId: user.id,
     action: 'telegram_bind_self',
     targetUserId: user.id,
@@ -80,7 +80,7 @@ async function redeemLinkCode(rawCode, chatId, tgUsername) {
 }
 
 /**
- * Clear a student's Telegram binding and audit it. Shared by the website
+ * Clear a user's own Telegram binding and audit it. Shared by the website
  * `DELETE /api/me/telegram` route (`source:'web'`) and the bot's OTP-confirmed
  * `/unlink` → `/confirm` flow (`source:'telegram_confirm'`).
  */
@@ -88,7 +88,7 @@ async function unlinkSelf(user, source) {
   const previousChatId = user.telegram_chat_id;
   await User.setTelegramBinding(user.id, { chatId: null, username: null });
   await AuditLog.record({
-    actorType: 'student',
+    actorType: user.role === 'student' ? 'student' : 'staff',
     actorId: user.id,
     action: 'telegram_unlink_self',
     targetUserId: user.id,

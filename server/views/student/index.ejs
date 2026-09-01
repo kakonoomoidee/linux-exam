@@ -36,45 +36,16 @@
     </div>
   </div>
 
-  <!-- forgot password: NIM -> OTP (via Telegram) -> new password -->
-  <div id="forgot-password-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
-    <div class="card w-full max-w-sm text-center">
-      <div class="brand-mark mx-auto mb-4">&gt;_</div>
-      <h1 class="text-lg font-bold mb-1" data-i18n="student.forgotPwTitle">Lupa Password</h1>
-      <p id="forgot-pw-step-indicator" class="text-xs uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-4"></p>
+  <!-- forgot password: NIM -> OTP (via Telegram) -> new password (shared with /admin) -->
+  <%- include('../partials/forgot-password-screen') %>
 
-      <div id="forgot-pw-step1">
-        <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.forgotPwStep1Sub">
-          Masukkan NIM kamu. Kalau Telegram sudah terhubung, kode OTP akan dikirim ke sana.
-        </p>
-        <label class="label text-left" for="forgot-nim-input" data-i18n="common.nim">NIM</label>
-        <input id="forgot-nim-input" class="field mb-4" autocomplete="off" inputmode="numeric" />
-        <button id="forgot-pw-send-btn" class="btn btn-primary btn-block" data-i18n="student.forgotPwSendBtn">Kirim OTP</button>
-      </div>
-
-      <div id="forgot-pw-step2" class="hidden">
-        <p id="forgot-pw-generic-msg" class="text-sm text-[color:var(--text-muted)] mb-5" aria-live="polite"></p>
-        <label class="label text-left" for="forgot-otp-input" data-i18n="student.otpLabel">Kode OTP</label>
-        <input id="forgot-otp-input" class="field mb-2 text-center tracking-[0.3em] font-mono"
-          inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
-        <p id="forgot-otp-error" class="text-[color:var(--danger)] text-sm mb-3 min-h-[18px]"></p>
-        <label class="label text-left" for="forgot-new-pw-input" data-i18n="student.newPw">Password baru</label>
-        <input id="forgot-new-pw-input" type="password" class="field mb-3" autocomplete="off" />
-        <label class="label text-left" for="forgot-confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
-        <input id="forgot-confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
-        <button id="forgot-pw-reset-btn" class="btn btn-primary btn-block" data-i18n="student.forgotPwResetBtn">Simpan Password Baru</button>
-      </div>
-
-      <button id="forgot-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2" data-i18n="student.backToLogin">Kembali ke Login</button>
-    </div>
-  </div>
-
-  <!-- forced password change on first login -->
+  <!-- forced password change on first login (full-page, no sidebar — by design).
+       Voluntary change-password is the in-shell #change-pw-view on the dashboard. -->
   <div id="change-password-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
     <div class="card w-full max-w-sm text-center">
       <div class="brand-mark mx-auto mb-4">&gt;_</div>
       <h1 class="text-lg font-bold mb-1" data-i18n="student.changePwTitle">Ganti Password</h1>
-      <p id="change-pw-subtitle" class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
+      <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.changePwSubtitle">
         Password default harus diganti sebelum melanjutkan.
       </p>
       <label class="label text-left" for="current-pw-input" data-i18n="student.currentPw">Password saat ini</label>
@@ -84,8 +55,6 @@
       <label class="label text-left" for="confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
       <input id="confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
       <button id="change-pw-btn" class="btn btn-primary btn-block" data-i18n="student.changePwBtn">Simpan</button>
-      <button id="change-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2 hidden"
-        data-i18n="student.backToDashboard">Kembali ke Dashboard</button>
       <p id="change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
     </div>
   </div>
@@ -109,48 +78,93 @@
           </div>
         </div>
 
+        <button id="dash-link" class="side-link active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          <span data-i18n="student.dashLink">Dashboard</span>
+        </button>
+
         <button id="change-pw-link" class="side-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-3 3a5 5 0 1 0-7 7l-7 7v3h3l7-7a5 5 0 0 0 7-7l-2 2-3-3z"/><path d="M15 9l3 3"/></svg>
           <span data-i18n="student.changePwLink">Ganti Password</span>
         </button>
 
-        <button id="logout-btn" class="side-link mt-auto">
+        <button id="telegram-connect-btn" class="side-link mt-auto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          <span data-i18n="student.telegramHeading">Hubungkan Telegram</span>
+          <span id="telegram-status" class="badge badge-gray ml-auto" data-i18n="student.telegramNotLinked">Belum terhubung</span>
+        </button>
+        <button id="telegram-disconnect-btn" class="side-link mt-auto hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M5.17 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="8" y1="2" x2="8" y2="5"/><line x1="2" y1="8" x2="5" y2="8"/><line x1="16" y1="19" x2="16" y2="22"/><line x1="19" y1="16" x2="22" y2="16"/></svg>
+          <span data-i18n="student.telegramDisconnectBtn">Putuskan</span>
+        </button>
+        <a id="telegram-bot-link" class="block text-[11px] text-[color:var(--text-faint)] px-2 mb-1 truncate hover:underline"
+          target="_blank" rel="noopener" hidden></a>
+
+        <button id="logout-btn" class="side-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
           <span data-i18n="common.logout">Keluar</span>
         </button>
       </aside>
 
       <main class="main-pane">
-        <header class="mb-6">
-          <h1 class="page-title" data-i18n="student.title">Ujian Praktikum Linux</h1>
-          <p class="page-subtitle" data-i18n="student.dashSubtitle">Gabung ke sesi ujian dan lihat riwayat nilaimu.</p>
-        </header>
+        <div id="dash-default-view">
+          <header class="mb-6">
+            <h1 class="page-title" data-i18n="student.title">Ujian Praktikum Linux</h1>
+            <p class="page-subtitle" data-i18n="student.dashSubtitle">Gabung ke sesi ujian dan lihat riwayat nilaimu.</p>
+          </header>
 
-        <div class="card">
-          <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
-          <div class="flex gap-2">
-            <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
-              maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
-            <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+          <div class="card">
+            <div class="card-title" data-i18n="student.joinHeading">Join Ujian</div>
+            <div class="flex gap-2">
+              <input id="join-code-input" class="field font-mono tracking-[0.3em] text-center uppercase"
+                maxlength="6" autocomplete="off" data-i18n-ph="student.joinPlaceholder" placeholder="Kode 6 huruf" />
+              <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
+            </div>
+            <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
           </div>
-          <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
-        </div>
 
-        <div class="card">
-          <div class="card-title" data-i18n="student.telegramHeading">Hubungkan Telegram</div>
-          <p class="text-sm text-[color:var(--text-faint)] mb-3" data-i18n="student.telegramSub">
-            Sambungkan akun Telegram untuk bisa reset password lewat OTP.
-          </p>
-          <div class="flex items-center gap-3 flex-wrap">
-            <span id="telegram-status" class="badge badge-gray" data-i18n="student.telegramNotLinked">Belum terhubung</span>
-            <button id="telegram-connect-btn" class="btn btn-primary btn-sm" data-i18n="student.telegramConnectBtn">Hubungkan</button>
-            <button id="telegram-disconnect-btn" class="btn btn-ghost btn-sm hidden" data-i18n="student.telegramDisconnectBtn">Putuskan</button>
+          <div class="card">
+            <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
+            <div id="history-list"></div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title" data-i18n="student.historyHeading">Riwayat Nilai</div>
-          <div id="history-list"></div>
+        <!-- voluntary change-password: rendered here so the sidebar stays visible
+             (the forced first-login gate is the separate full-page #change-password-screen) -->
+        <div id="change-pw-view" class="hidden flex justify-center items-center min-h-full">
+          <div class="card w-full max-w-sm">
+            <div class="card-title" data-i18n="student.changePwLink">Ganti Password</div>
+            <p class="text-sm text-[color:var(--text-faint)] mb-4" data-i18n="student.changePwVoluntarySubtitle">
+              Ganti password akunmu. Kamu akan tetap masuk setelah menyimpan.
+            </p>
+
+            <div id="vol-pw-need-tg" class="hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-3 text-sm text-[color:var(--text-muted)] mb-4">
+              <p data-i18n="student.changePwNeedTelegram">Hubungkan Telegram dulu untuk mengganti password.</p>
+              <button id="vol-pw-connect-tg" class="btn btn-ghost btn-sm mt-2" data-i18n="student.telegramHeading">Hubungkan Telegram</button>
+            </div>
+
+            <div id="vol-pw-fields">
+              <label class="label" for="vol-current-pw" data-i18n="student.currentPw">Password saat ini</label>
+              <input id="vol-current-pw" type="password" class="field mb-3" autocomplete="off" />
+
+              <button id="vol-send-otp-btn" class="btn btn-ghost btn-sm btn-block mb-1"
+                data-i18n="student.changePwSendOtp">Kirim kode ke Telegram</button>
+              <p id="vol-otp-hint" class="text-xs text-[color:var(--text-faint)] mb-3 min-h-[16px]"></p>
+
+              <label class="label" for="vol-otp-input" data-i18n="student.changePwOtpLabel">Kode OTP Telegram</label>
+              <input id="vol-otp-input" type="text" inputmode="numeric" maxlength="6"
+                class="field mb-3 tracking-[0.3em] text-center font-mono" autocomplete="off" />
+
+              <label class="label" for="vol-new-pw" data-i18n="student.newPw">Password baru</label>
+              <input id="vol-new-pw" type="password" class="field mb-3" autocomplete="off" />
+              <label class="label" for="vol-confirm-pw" data-i18n="student.confirmPw">Ulangi password baru</label>
+              <input id="vol-confirm-pw" type="password" class="field mb-4" autocomplete="off" />
+
+              <button id="vol-change-pw-btn" class="btn btn-primary btn-block"
+                data-i18n="student.changePwBtn">Simpan</button>
+              <p id="vol-change-pw-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -257,6 +271,8 @@
   <script src="/shared/vendor/socket.io.min.js"></script>
   <script src="/shared/vendor/sweetalert2.all.min.js"></script>
   <script src="/shared/ui.js"></script>
+  <script src="/shared/forgot-password.js"></script>
+  <script src="/shared/telegram-connect.js"></script>
   <script src="/exam-assets/js/app.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 const qEsc = (s) => window.ui.escapeHtml(String(s == null ? '' : s));
 let bankUcp = 1; // Bank Soal is segmented by UCP; questions carry q.ucp (default 1)
+let qfUcp = 1; // active UCP in the add/edit modal's #qf-ucp-toggle
 const Q_LEVEL_TONE = { easy: 'green', medium: 'amber', hard: 'red' };
 const qLevelBadge = (lvl) =>
   window.ui.pill(t('admin.level.' + (lvl || 'medium')) || lvl || 'medium', Q_LEVEL_TONE[lvl] || 'amber');
@@ -36,14 +37,20 @@ document.getElementById('import-questions-btn').addEventListener('click', async 
 // --- Add / edit form (SweetAlert2) ---
 function questionFormHtml(q = {}) {
   const opt = (v, cur) => `<option value="${v}"${v === cur ? ' selected' : ''}>${v}</option>`;
+  qfUcp = q.ucp ?? bankUcp;
   return `
     <div style="text-align:left;display:flex;flex-direction:column;gap:14px">
       <div style="display:flex;gap:10px">
         <div style="flex:1">
-          <label class="label" for="qf-ucp">${qEsc(t('common.ucp'))}</label>
-          <select id="qf-ucp" class="field">
-            ${[1, 2].map((u) => `<option value="${u}"${(q.ucp ?? bankUcp) === u ? ' selected' : ''}>UCP ${u}</option>`).join('')}
-          </select>
+          <label class="label">${qEsc(t('common.ucp'))}</label>
+          <div id="qf-ucp-toggle" class="flex gap-1" role="group" aria-label="UCP">
+            ${[1, 2]
+              .map(
+                (u) =>
+                  `<button type="button" class="btn btn-sm ${u === qfUcp ? 'btn-primary' : 'btn-ghost'}" data-ucp="${u}" aria-pressed="${u === qfUcp}">UCP ${u}</button>`
+              )
+              .join('')}
+          </div>
         </div>
         <div style="flex:1">
           <label class="label" for="qf-variant">${qEsc(t('common.variant'))}</label>
@@ -106,7 +113,7 @@ function readQuestionForm() {
     .map((s) => s.trim())
     .filter(Boolean);
   return {
-    ucp: parseInt(document.getElementById('qf-ucp').value, 10) === 2 ? 2 : 1,
+    ucp: qfUcp === 2 ? 2 : 1,
     variant_index: parseInt(document.getElementById('qf-variant').value, 10) || 0,
     order_index: parseInt(document.getElementById('qf-order').value, 10) || 1,
     story_text: document.getElementById('qf-story-id').value.trim(),
@@ -128,7 +135,21 @@ async function openQuestionForm(existing) {
     confirmButtonText: t('common.save'),
     cancelButtonText: t('common.cancel'),
     focusConfirm: false,
-    didOpen: () => window.ui.enhanceAllSelects(window.Swal.getPopup()),
+    didOpen: () => {
+      const popup = window.Swal.getPopup();
+      window.ui.enhanceAllSelects(popup);
+      popup.querySelectorAll('#qf-ucp-toggle button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          qfUcp = parseInt(btn.dataset.ucp, 10);
+          popup.querySelectorAll('#qf-ucp-toggle button').forEach((b) => {
+            const on = b === btn;
+            b.classList.toggle('btn-primary', on);
+            b.classList.toggle('btn-ghost', !on);
+            b.setAttribute('aria-pressed', String(on));
+          });
+        });
+      });
+    },
     preConfirm: () => {
       const body = readQuestionForm();
       if (!body.story_text) {
