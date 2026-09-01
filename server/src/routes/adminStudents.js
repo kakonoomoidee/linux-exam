@@ -67,7 +67,7 @@ router.patch('/:id', async (req, res) => {
       fields.kelas = null;
     } else {
       const kelas = normalizeKelas(raw);
-      if (kelas === null) return res.status(400).json({ error: 'kelas harus satu huruf A–F' });
+      if (kelas === null) return res.status(400).json({ error: 'format kelas tidak valid (huruf/angka, maks 12 karakter)' });
       fields.kelas = kelas;
     }
   }

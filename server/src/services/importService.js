@@ -139,7 +139,7 @@ async function importStudentsFromFile(filePath, actorId = null) {
     if (kelasRaw !== '') {
       kelas = normalizeKelas(kelasRaw);
       if (kelas === null) {
-        errors.push({ row: i + 2, nim, kelas: kelasRaw, error: 'kelas harus satu huruf A–F' });
+        errors.push({ row: i + 2, nim, kelas: kelasRaw, error: 'format kelas tidak valid (huruf/angka, maks 12 karakter)' });
         continue;
       }
     }

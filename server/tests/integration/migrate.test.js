@@ -9,6 +9,7 @@ useTestDb();
 // let migrate() salvage + re-add the constraint.
 async function dropKelasCheck() {
   await db.sequelize.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_kelas_chk');
+  await db.sequelize.query('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_kelas_code_chk');
 }
 
 describe('migrate: one-time kelas normalization', () => {
@@ -35,7 +36,7 @@ describe('migrate: one-time kelas normalization', () => {
 
     // constraint is back
     const [chk] = await db.all(
-      "SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_chk'"
+      "SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_code_chk'"
     );
     expect(chk).toBeTruthy();
 
@@ -45,9 +46,15 @@ describe('migrate: one-time kelas normalization', () => {
     expect(Object.fromEntries(after.map((r) => [r.nim, r.kelas]))).toEqual(byNim);
   });
 
-  test('the re-added CHECK constraint rejects a non-A–F kelas', async () => {
+  test('the re-added CHECK constraint rejects a malformed kelas code', async () => {
     await expect(
-      db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140099', 'Z', 'student', 'TI-3A')")
+      db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140099', 'Z', 'student', 'kelas c')")
     ).rejects.toThrow();
+  });
+
+  test('the re-added CHECK constraint accepts an ad-hoc code beyond A–F', async () => {
+    await db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140098', 'Y', 'student', 'TI-1A')");
+    const [row] = await db.all("SELECT kelas FROM users WHERE nim = '20220140098'");
+    expect(row.kelas).toBe('TI-1A');
   });
 });

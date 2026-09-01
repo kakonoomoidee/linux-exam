@@ -80,7 +80,7 @@ describe('POST /api/admin/sessions/:id/participants', () => {
     const res = await request(app)
       .post(`/api/admin/sessions/${session.id}/participants`)
       .set(auth)
-      .send({ nims: [{ nim: '20220140058', name: 'X', kelas: 'TI-3A' }, { nim: '20220140059', name: 'Y', kelas: 'c' }] });
+      .send({ nims: [{ nim: '20220140058', name: 'X', kelas: 'TI_3A' }, { nim: '20220140059', name: 'Y', kelas: 'c' }] });
     expect(res.status).toBe(201);
     expect(res.body.skipped).toHaveLength(1);
     expect(res.body.skipped[0].nim).toBe('20220140058');

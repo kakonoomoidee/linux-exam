@@ -1,15 +1,18 @@
 const { normalizeKelas, salvageKelas } = require('../../src/lib/kelas');
 
-describe('normalizeKelas (strict — live input)', () => {
+describe('normalizeKelas (live input — A–F plus ad-hoc class codes)', () => {
   test.each([
     ['A', 'A'],
     ['f', 'F'],
     ['  c  ', 'C'],
+    ['g', 'G'],
+    ['ti-3a', 'TI-3A'],
+    ['b1', 'B1'],
   ])('%j -> %j', (input, expected) => {
     expect(normalizeKelas(input)).toBe(expected);
   });
 
-  test.each(['', null, undefined, 'G', 'AA', 'TI-3A', '3', 'a1'])('%j -> null', (input) => {
+  test.each(['', null, undefined, 'a b', 'TI_3A', 'WAY-TOO-LONG-CODE', 'x!'])('%j -> null', (input) => {
     expect(normalizeKelas(input)).toBeNull();
   });
 });
