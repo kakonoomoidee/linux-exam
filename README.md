@@ -160,6 +160,24 @@ Lihat `tests/FINDINGS.md` — bug yang ketemu pas nulis test. #1 (async handler
 error bikin request hang) udah difix pakai `express-async-errors`. #2–#5 belum
 difix; test-nya assert behavior sekarang + ditandai `FINDING:`.
 
+### CI (GitHub Actions)
+
+Tiap `pull_request` ke `main` dan tiap `push` ke `main` jalanin
+`.github/workflows/`:
+
+| Job | Isi |
+|---|---|
+| **test** | `cd server && npm ci && npm test` di `ubuntu-latest`, dengan service container `postgres:16-alpine`. DB `tekser_test` dibikin + dimigrate otomatis sama `tests/helpers/global-setup.js` — nggak ada step migrate terpisah. Nggak nge-hit API eksternal apa pun: `CONTAINER_DRIVER=mock` dan `MockTelegram` aktif otomatis pas `NODE_ENV=test`. |
+| **docker-build** | `docker compose config` + `docker compose build` — nangkep salah config compose (mis. network nggak kedefinisi) sebelum sampe server produksi. |
+| **CodeQL** | Scan keamanan JavaScript, plus jadwal mingguan. |
+
+**Buat kontributor: PR wajib ijo CI dulu sebelum di-merge.** Branch protection
+di `main` di-enforce lewat GitHub settings (Settings → Branches → require
+status checks: `test`, `docker-build`, CodeQL).
+
+Jalanin test yang sama di lokal: `cd server && npm test` (butuh
+`docker compose up -d db`). Detail alur kontribusi ada di `CONTRIBUTING.md`.
+
 ## Bahasa (i18n)
 
 UI dua bahasa: **Indonesia** & **Inggris**. Switcher `ID / EN` ada di pojok
