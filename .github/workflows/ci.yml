@@ -44,7 +44,7 @@ jobs:
       # suite never reaches api.telegram.org.
       DATABASE_URL: postgres://tekser:tekser@localhost:5432/tekser_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -57,7 +57,7 @@ jobs:
     name: docker compose config + build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Catches compose-file mistakes (bad interpolation, undefined network,
       # etc.) before they reach the production server.
       - name: Validate docker-compose.yml
