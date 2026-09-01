@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const { Submission } = require('../models/Submission');
 const containerService = require('./containerService');
 const timerService = require('./timerService');
+const { closeWatch } = require('../sockets/terminalSocket');
 
 let io = null; // set by sockets/index.js at boot to avoid a require cycle
 function attachIo(socketIoInstance) {
@@ -125,6 +126,8 @@ async function endParticipant(participantId) {
 
   const submissions = await Submission.listForParticipant(participant.id);
   emitToParticipant(participant.session_token, 'exam:ended', { submissions });
+  // release any staff watching this terminal (end notice + drop the ring buffer)
+  closeWatch(io, participant.session_token);
 
   // Hard stop: force-close any lingering terminal socket(s) for this
   // participant a beat after the payload above, so the browser can't keep
@@ -153,6 +156,7 @@ async function deleteSession(sessionId) {
   await Promise.all(
     participants.map(async (p) => {
       timerService.cancel(p.id);
+      closeWatch(io, p.session_token); // release staff watching a mid-exam delete
       // always attempt teardown — teardownParticipant handles the no-container
       // case itself and can still catch an orphan by its deterministic name.
       try {

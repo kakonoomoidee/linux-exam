@@ -144,6 +144,8 @@
   "admin.lockStatus": "Kunci / Pelanggaran",
   "admin.locked": "TERKUNCI",
   "admin.forceUnlock": "Buka Paksa",
+  "admin.watchLive": "Lihat Live",
+  "admin.watchEnded": "Mahasiswa sudah menyelesaikan ujian",
   "admin.violationsN": "{n}x pelanggaran",
   "admin.violationAlert": "{who} meninggalkan tab ujian (pelanggaran ke-{n}). Kode buka kunci: {code}",
   "admin.unlockedToast": "{nim} sudah dibuka kunci.",

@@ -4,7 +4,7 @@ const config = require('../config');
 const Session = require('../models/Session');
 const examService = require('../services/examService');
 const lockService = require('../services/lockService');
-const registerTerminalHandlers = require('./terminalSocket');
+const { registerTerminalHandlers, getWatchBuffer } = require('./terminalSocket');
 
 let ioInstance = null;
 
@@ -94,6 +94,30 @@ function initSockets(httpServer) {
       } catch (err) {
         socket.emit('exam:error', { message: 'Token admin tidak valid' });
       }
+    });
+
+    // --- staff watches one student's terminal live (read-only screen mirror) ---
+    // Joins the watch:<session_token> room that terminalSocket.js fans output
+    // into, and replays the ring buffer so a late join sees the current screen.
+    // Purely read-only: there is no path from here to containerStream.write.
+    socket.on('admin:watch-terminal', async ({ token, sessionToken }) => {
+      try {
+        const decoded = jwt.verify(token, config.jwtSecret);
+        if (!['instruktur', 'asisten'].includes(decoded.role)) throw new Error('not staff');
+      } catch (err) {
+        return socket.emit('terminal:error', { message: 'Token admin tidak valid' });
+      }
+      const participant = await Session.findParticipantByToken(sessionToken);
+      if (!participant || participant.container_status !== 'active') {
+        return socket.emit('terminal:error', { message: 'Terminal mahasiswa tidak aktif' });
+      }
+      socket.join(`watch:${sessionToken}`);
+      const buf = getWatchBuffer(sessionToken);
+      if (buf) socket.emit('terminal:output', buf);
+    });
+
+    socket.on('admin:unwatch-terminal', ({ sessionToken }) => {
+      socket.leave(`watch:${sessionToken}`);
     });
   });
 

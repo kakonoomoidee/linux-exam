@@ -173,6 +173,8 @@
   "admin.lockStatus": "Lock / Violations",
   "admin.locked": "LOCKED",
   "admin.forceUnlock": "Force Unlock",
+  "admin.watchLive": "Watch Live",
+  "admin.watchEnded": "Student has finished the exam",
   "admin.violationsN": "{n} violation(s)",
   "admin.violationAlert": "{who} left the exam tab (violation #{n}). Unlock code: {code}",
   "admin.unlockedToast": "{nim} has been unlocked.",
