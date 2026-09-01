@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A newer push to the same PR/branch cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (jest + postgres)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tekser
+          POSTGRES_PASSWORD: tekser
+          POSTGRES_DB: tekser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tekser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # tests/helpers/env.js already hardcodes CONTAINER_DRIVER=mock and
+      # NODE_ENV=test and defaults JWT_SECRET, so DATABASE_URL is the only
+      # thing CI has to point at the service container. The DB name must end
+      # in _test (global-setup.js asserts it); that DB is created on the fly
+      # and migrated by global-setup.js, so there is no separate migrate step.
+      #
+      # TELEGRAM_* / OTP_TTL_MINUTES are intentionally left unset: lib/telegram.js
+      # returns MockTelegram whenever NODE_ENV=test regardless of token, so the
+      # suite never reaches api.telegram.org.
+      DATABASE_URL: postgres://tekser:tekser@localhost:5432/tekser_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  docker-build:
+    name: docker compose config + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Catches compose-file mistakes (bad interpolation, undefined network,
+      # etc.) before they reach the production server.
+      - name: Validate docker-compose.yml
+        run: docker compose config
+      # Builds every service that has a `build:` section (app, sandbox-image).
+      # `db` is a pulled image and is skipped.
+      - name: Build compose images
+        run: docker compose build

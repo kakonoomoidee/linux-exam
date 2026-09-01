@@ -1,0 +1,64 @@
+name: Bug report
+description: Ada yang error / nggak sesuai harapan
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Langkah reproduce
+      description: Urutan langkah biar orang lain bisa munculin bug yang sama.
+      placeholder: |
+        1. Login sebagai asisten
+        2. Buka tab "Sesi", klik "Mulai Ujian"
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Yang diharapkan
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Yang terjadi
+      description: Termasuk pesan error / isi console / log server kalau ada.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser + versi, device, OS. Sebutin juga kalau lewat Docker Compose atau `npm run dev`.
+      placeholder: Chrome 128 / Windows 11 / docker compose
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Tidak yakin
+        - Auth / login / role
+        - Timer ujian
+        - Container / terminal mahasiswa
+        - Grading / review nilai
+        - Telegram (OTP / bot)
+        - Dashboard admin (UI)
+        - Halaman ujian mahasiswa (UI)
+        - Lainnya
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot / rekaman
+      description: Tarik gambar ke sini. Opsional tapi ngebantu.
+    validations:
+      required: false

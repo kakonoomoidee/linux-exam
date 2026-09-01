@@ -1,0 +1,37 @@
+name: Feature request
+description: Usul fitur / perubahan
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Fitur yang diusulkan
+      description: Jelasin sekonkret mungkin — apa yang berubah dari sisi pemakai.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Kenapa dibutuhin
+      description: Masalah apa yang lagi kejadian sekarang tanpa fitur ini.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      options:
+        - Nice to have
+        - Kepake sebelum ujian berikutnya
+        - Blocking — nggak bisa ujian tanpa ini
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatif / workaround sekarang
+    validations:
+      required: false
