@@ -20,6 +20,10 @@ const telegram = require('./telegramClient');
 
 const MIN_PASSWORD_LENGTH = 8;
 
+// Roles allowed to reset their password via Telegram OTP. Students always could;
+// staff (instruktur/asisten) were added once they could bind Telegram themselves.
+const RESET_ROLES = new Set(['student', 'instruktur', 'asisten']);
+
 // Timing filler so "no OTP pending" costs the same as a real compare.
 const DUMMY_HASH = bcrypt.hashSync(crypto.randomBytes(16).toString('hex'), 12);
 
@@ -47,9 +51,9 @@ function noteAttempt(map, key, windowMs) {
 }
 
 /**
- * Mint + send an OTP for a known, Telegram-bound student. Shared core of both
- * entry points below. `extraLine` is appended to the Telegram message (the
- * `/changepass` path uses it to tell the user where to type the code).
+ * Mint + send an OTP for a known, Telegram-bound user (student or staff). Shared
+ * core of both entry points below. `extraLine` is appended to the Telegram message
+ * (the `/changepass` path uses it to tell the user where to type the code).
  */
 async function issueResetOtp(user, extraLine = '') {
   // Invalidate any pending OTP, then drop already-consumed rows for this user.
@@ -72,7 +76,7 @@ async function issueResetOtp(user, extraLine = '') {
     `Kode reset password Tekser kamu: ${code}\nBerlaku ${config.otpTtlMinutes} menit. Jangan bagikan ke siapa pun.${extraLine}`
   );
   await AuditLog.record({
-    actorType: 'student',
+    actorType: user.role === 'student' ? 'student' : 'staff',
     actorId: user.id,
     action: 'password_reset_requested',
     targetUserId: user.id,
@@ -81,8 +85,9 @@ async function issueResetOtp(user, extraLine = '') {
 
 /**
  * Website "Lupa Password?" entry point. Generate + send an OTP if `rawNim` is a
- * real, Telegram-bound student. Silent in every branch (the caller has already
- * responded generically). Never throws to the caller — the route wraps it in .catch().
+ * real, Telegram-bound user in RESET_ROLES (student or staff). Silent in every
+ * branch (the caller has already responded generically). Never throws to the
+ * caller — the route wraps it in .catch().
  */
 async function requestReset(rawNim) {
   const nim = String(rawNim || '').trim();
@@ -91,7 +96,7 @@ async function requestReset(rawNim) {
   noteAttempt(requests, nim, REQ_WINDOW_MS);
 
   const user = await User.findByNim(nim);
-  if (!user || user.role !== 'student' || !user.telegram_chat_id) return;
+  if (!user || !RESET_ROLES.has(user.role) || !user.telegram_chat_id) return;
   await issueResetOtp(user);
 }
 
@@ -123,7 +128,7 @@ async function completeReset(rawNim, otp, newPassword) {
 
   const user = await User.findByNim(nim);
   const row =
-    user && user.role === 'student'
+    user && RESET_ROLES.has(user.role)
       ? await db.get(
           `SELECT * FROM password_reset_otps
              WHERE user_id = $1 AND consumed_at IS NULL
@@ -135,7 +140,7 @@ async function completeReset(rawNim, otp, newPassword) {
 
   // Always one bcrypt compare, regardless of whether a row exists.
   const okOtp = await verify(String(otp || ''), fresh ? row.otp_hash : DUMMY_HASH);
-  if (!user || user.role !== 'student' || !fresh || !okOtp) {
+  if (!user || !RESET_ROLES.has(user.role) || !fresh || !okOtp) {
     noteAttempt(verifies, nim, VERIFY_WINDOW_MS);
     return { ok: false };
   }
@@ -148,7 +153,7 @@ async function completeReset(rawNim, otp, newPassword) {
   verifies.delete(nim);
   requests.delete(nim);
   await AuditLog.record({
-    actorType: 'student',
+    actorType: user.role === 'student' ? 'student' : 'staff',
     actorId: user.id,
     action: 'password_reset_completed',
     targetUserId: user.id,

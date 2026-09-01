@@ -286,11 +286,10 @@
   "student.backToLogin": "Back to login",
 
   "student.telegramHeading": "Connect Telegram",
-  "student.telegramSub": "Link your Telegram account so you can reset your password via OTP.",
   "student.telegramNotLinked": "Not linked",
+  "student.telegramBotLabel": "Bot:",
   "student.telegramLinked": "Telegram linked",
   "student.telegramLinkedAs": "Linked as @{username}",
-  "student.telegramConnectBtn": "Connect",
   "student.telegramDisconnectBtn": "Disconnect",
   "student.telegramModalTitle": "Connect Telegram",
   "student.telegramOpenBtn": "Open in Telegram",

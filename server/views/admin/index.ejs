@@ -31,9 +31,13 @@
       <input id="admin-password" type="password" class="field mb-4"
         data-i18n-ph="common.password" placeholder="Password" />
       <button id="admin-login-btn" class="btn btn-primary btn-block" data-i18n="common.login">Masuk</button>
+      <button id="admin-forgot-pw-link" class="btn btn-ghost btn-sm btn-block mt-2" data-i18n="student.forgotPwLink">Lupa Password?</button>
       <p id="admin-login-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
     </div>
   </div>
+
+  <!-- forgot password: NIM -> OTP (via Telegram) -> new password (shared with /exam) -->
+  <%- include('../partials/forgot-password-screen') %>
 
   <!-- dashboard -->
   <div id="dashboard-screen" class="screen hidden">
@@ -56,6 +60,8 @@
   <script src="/shared/vendor/socket.io.min.js"></script>
   <script src="/shared/vendor/sweetalert2.all.min.js"></script>
   <script src="/shared/ui.js"></script>
+  <script src="/shared/forgot-password.js"></script>
+  <script src="/shared/telegram-connect.js"></script>
   <script src="/admin-assets/js/api.js"></script>
   <script src="/admin-assets/js/app.js"></script>
   <script src="/admin-assets/js/sessions.js"></script>

@@ -257,11 +257,10 @@
   "student.backToLogin": "Kembali ke Login",
 
   "student.telegramHeading": "Hubungkan Telegram",
-  "student.telegramSub": "Sambungkan akun Telegram untuk bisa reset password lewat OTP.",
   "student.telegramNotLinked": "Belum terhubung",
+  "student.telegramBotLabel": "Bot:",
   "student.telegramLinked": "Telegram terhubung",
   "student.telegramLinkedAs": "Terhubung sebagai @{username}",
-  "student.telegramConnectBtn": "Hubungkan",
   "student.telegramDisconnectBtn": "Putuskan",
   "student.telegramModalTitle": "Hubungkan Telegram",
   "student.telegramOpenBtn": "Buka di Telegram",

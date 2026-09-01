@@ -42,10 +42,15 @@ router.post('/me/password', async (req, res) => {
 // Everything below is off-limits until the default password has been changed.
 router.use(requirePasswordChanged);
 
-/** Current Telegram binding state for the dashboard card. */
+/** Current Telegram binding state for the sidebar entry. `botUsername` lets the UI
+ *  show a persistent "Bot: @..." link without opening the connect modal first. */
 router.get('/me/telegram', async (req, res) => {
   const user = await User.findById(req.user.id);
-  res.json({ linked: !!(user && user.telegram_chat_id), username: (user && user.telegram_username) || null });
+  res.json({
+    linked: !!(user && user.telegram_chat_id),
+    username: (user && user.telegram_username) || null,
+    botUsername: config.telegramBotUsername,
+  });
 });
 
 /** Mint a one-time code the student sends to the bot as `/start <code>`. */

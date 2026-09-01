@@ -1,7 +1,7 @@
 const request = require('supertest');
 const buildApp = require('../../src/app');
 const { useTestDb } = require('../helpers/db');
-const { createStudent } = require('../helpers/factory');
+const { createStudent, createAdmin } = require('../helpers/factory');
 const db = require('../../src/db/connection');
 const telegram = require('../../src/services/telegramClient');
 const passwordResetService = require('../../src/services/passwordResetService');
@@ -136,5 +136,37 @@ describe('POST /api/auth/reset-password', () => {
     await waitForTelegram(1);
     await sleep(300);
     expect(telegram.sent.length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe('staff (instruktur / asisten) use the same flow', () => {
+  test('bound instruktur: request -> OTP -> reset -> login/admin with the new password', async () => {
+    const staff = await createAdmin({ nim: 'dosen', password: 'oldpass123', role: 'instruktur' });
+    await bind(staff.id, '9500');
+
+    const res = await request(app).post('/api/auth/forgot-password').send({ nim: 'dosen' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(GENERIC);
+    await waitForTelegram(1);
+    expect(telegram.sent[0].chatId).toBe('9500');
+    const otp = otpFromTelegram();
+
+    const reset = await request(app)
+      .post('/api/auth/reset-password')
+      .send({ nim: 'dosen', otp, newPassword: 'freshadmin123' });
+    expect(reset.status).toBe(200);
+
+    const login = await request(app).post('/api/auth/login/admin').send({ nim: 'dosen', password: 'freshadmin123' });
+    expect(login.status).toBe(200);
+    expect(login.body.user.role).toBe('instruktur');
+  });
+
+  test('instruktur without Telegram -> same generic 200, nothing sent', async () => {
+    await createAdmin({ nim: 'dosen2', role: 'instruktur' });
+    const res = await request(app).post('/api/auth/forgot-password').send({ nim: 'dosen2' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(GENERIC);
+    await sleep(400);
+    expect(telegram.sent).toHaveLength(0);
   });
 });

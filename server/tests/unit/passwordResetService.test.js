@@ -1,5 +1,5 @@
 const { useTestDb } = require('../helpers/db');
-const { createStudent } = require('../helpers/factory');
+const { createStudent, createAdmin, createAsisten } = require('../helpers/factory');
 const db = require('../../src/db/connection');
 const { verify } = require('../../src/lib/password');
 const svc = require('../../src/services/passwordResetService');
@@ -144,5 +144,47 @@ describe('passwordResetService', () => {
     await svc.requestResetForUser(user); // 2
     await svc.requestReset('tg2'); // 3
     expect(await svc.requestResetForUser(user)).toEqual({ throttled: true }); // 4th, blocked
+  });
+
+  describe('staff (instruktur / asisten)', () => {
+    test('a bound instruktur can request an OTP and complete a reset', async () => {
+      const staff = await createAdmin({ nim: 'dosen1', role: 'instruktur' });
+      await bindTelegram(staff.id, '70001');
+      await svc.requestReset('dosen1');
+      expect(telegram.sent[0].chatId).toBe('70001');
+
+      expect((await svc.completeReset('dosen1', lastOtp(), 'a-good-password')).ok).toBe(true);
+      const u = await db.get('SELECT * FROM users WHERE id = $1', [staff.id]);
+      expect(await verify('a-good-password', u.password_hash)).toBe(true);
+    });
+
+    test('a bound asisten can complete a reset too', async () => {
+      const staff = await createAsisten({ nim: 'ta1' });
+      await bindTelegram(staff.id, '70002');
+      await svc.requestReset('ta1');
+      expect((await svc.completeReset('ta1', lastOtp(), 'a-good-password')).ok).toBe(true);
+    });
+
+    test('staff without a Telegram binding get nothing (same as an unbound student)', async () => {
+      await createAdmin({ nim: 'dosen2', role: 'instruktur' });
+      await svc.requestReset('dosen2');
+      expect(telegram.sent).toHaveLength(0);
+      expect((await svc.completeReset('dosen2', '000000', 'a-good-password')).ok).toBe(false);
+    });
+
+    test('the audit rows are recorded with actor_type = staff', async () => {
+      const staff = await createAdmin({ nim: 'dosen3', role: 'instruktur' });
+      await bindTelegram(staff.id, '70003');
+      await svc.requestReset('dosen3');
+      await svc.completeReset('dosen3', lastOtp(), 'a-good-password');
+      const rows = await db.all(
+        `SELECT action, actor_type FROM audit_logs WHERE actor_id = $1 ORDER BY id`,
+        [staff.id]
+      );
+      expect(rows).toEqual([
+        { action: 'password_reset_requested', actor_type: 'staff' },
+        { action: 'password_reset_completed', actor_type: 'staff' },
+      ]);
+    });
   });
 });

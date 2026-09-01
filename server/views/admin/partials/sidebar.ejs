@@ -47,7 +47,23 @@
     <% } %>
   <% }) %>
 
-  <button id="admin-logout-btn" class="side-link mt-auto">
+  <% if (!isStandalone) { %>
+    <%/* Staff bind their own Telegram here — prerequisite for OTP password reset.
+         Driven by /shared/telegram-connect.js; same element IDs as the student sidebar. */%>
+    <button id="telegram-connect-btn" class="side-link mt-auto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      <span data-i18n="student.telegramHeading">Hubungkan Telegram</span>
+      <span id="telegram-status" class="badge badge-gray ml-auto" data-i18n="student.telegramNotLinked">Belum terhubung</span>
+    </button>
+    <button id="telegram-disconnect-btn" class="side-link mt-auto hidden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M5.17 11.75l-1.72 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="8" y1="2" x2="8" y2="5"/><line x1="2" y1="8" x2="5" y2="8"/><line x1="16" y1="19" x2="16" y2="22"/><line x1="19" y1="16" x2="22" y2="16"/></svg>
+      <span data-i18n="student.telegramDisconnectBtn">Putuskan</span>
+    </button>
+    <a id="telegram-bot-link" class="block text-[11px] text-[color:var(--text-faint)] px-2 mb-1 truncate hover:underline"
+      target="_blank" rel="noopener" hidden></a>
+  <% } %>
+
+  <button id="admin-logout-btn" class="side-link<%= isStandalone ? ' mt-auto' : '' %>">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
     <span data-i18n="common.logout">Keluar</span>
   </button>

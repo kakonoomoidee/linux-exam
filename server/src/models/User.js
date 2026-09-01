@@ -12,7 +12,7 @@ const User = {
     return db.get('SELECT * FROM users WHERE id = $1', [id]);
   },
 
-  /** The student a Telegram chat is bound to, or undefined. */
+  /** The user (student or staff) a Telegram chat is bound to, or undefined. */
   findByTelegramChatId(chatId) {
     return db.get('SELECT * FROM users WHERE telegram_chat_id = $1', [String(chatId)]);
   },
@@ -101,13 +101,16 @@ const User = {
   },
 
   /**
-   * Set (or clear, with nulls) a student's Telegram binding. Returns the updated row.
-   * Used by the bot on self-service /start, by staff via PATCH, and by self-unlink.
+   * Set (or clear, with nulls) a user's own Telegram binding. Returns the updated row.
+   * Used by the bot on self-service /start and by self-unlink, for students AND staff
+   * (staff need it to reset their password via OTP). `id` is always the caller's own —
+   * from req.user.id or a proven chat — so no role guard here. Staff correction of a
+   * *student's* binding goes through updateStudent(), which stays student-only.
    */
   setTelegramBinding(id, { chatId = null, username = null } = {}) {
     return db.run(
       `UPDATE users SET telegram_chat_id = $1, telegram_username = $2
-       WHERE id = $3 AND role = 'student' RETURNING *`,
+       WHERE id = $3 RETURNING *`,
       [chatId, username, id]
     );
   },
