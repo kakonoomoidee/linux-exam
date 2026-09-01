@@ -4,9 +4,7 @@ const STU_PAGE_SIZE = 50;
 let stuRoster = [];
 let stuPage = 1;
 
-// Kelas picker: A–F plus whatever already exists in the roster. Set to false to
-// drop the "+ tambah kelas" option and keep staff on the fixed A–F list.
-const ALLOW_CUSTOM_KELAS = true;
+// Kelas picker: the fixed A–F list (plus any legacy value still on the row).
 const KELAS_BASE = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function refreshStudentTemplateLink() {
@@ -118,7 +116,6 @@ async function openStudentForm(s) {
   const kelasOptionsHtml = [
     `<option value="">${stuEsc(t('admin.kelasNone'))}</option>`,
     ...kelasOpts.map((k) => `<option value="${stuEsc(k)}"${s.kelas === k ? ' selected' : ''}>${stuEsc(k)}</option>`),
-    ALLOW_CUSTOM_KELAS ? `<option value="__new__">${stuEsc(t('admin.kelasAddOption'))}</option>` : '',
   ].join('');
   const { isConfirmed, value } = await window.ui.modal.fire({
     title: t('admin.editStudent'),
@@ -135,8 +132,6 @@ async function openStudentForm(s) {
         <div>
           <label class="label" for="sf-kelas">${stuEsc(t('common.kelas'))}</label>
           <select id="sf-kelas" class="field">${kelasOptionsHtml}</select>
-          <input id="sf-kelas-new" class="field" maxlength="12" placeholder="${stuEsc(t('admin.kelasNewPlaceholder'))}"
-            style="margin-top:8px;display:none">
         </div>
         <div>
           <label class="label" for="sf-tg-username">${stuEsc(t('admin.telegramUsername'))}</label>
@@ -154,25 +149,10 @@ async function openStudentForm(s) {
     cancelButtonText: t('common.cancel'),
     focusConfirm: false,
     didOpen: () => {
-      const sel = document.getElementById('sf-kelas');
-      const custom = document.getElementById('sf-kelas-new');
-      const sync = () => {
-        const on = sel.value === '__new__';
-        custom.style.display = on ? 'block' : 'none';
-        if (on) custom.focus();
-      };
-      sel.addEventListener('change', sync);
-      sync();
+      window.ui.enhanceAllSelects(window.Swal.getPopup());
     },
     preConfirm: () => {
-      const sel = document.getElementById('sf-kelas');
-      let kelas = sel.value === '__new__'
-        ? document.getElementById('sf-kelas-new').value.trim().toUpperCase()
-        : sel.value;
-      if (kelas && !/^[A-Z0-9-]{1,12}$/.test(kelas)) {
-        window.Swal.showValidationMessage(t('admin.kelasFieldHelp'));
-        return false;
-      }
+      const kelas = document.getElementById('sf-kelas').value;
       const chatId = document.getElementById('sf-tg-chat-id').value.trim();
       if (chatId && !/^-?\d+$/.test(chatId)) {
         window.Swal.showValidationMessage(t('admin.telegramChatId'));

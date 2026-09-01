@@ -59,12 +59,12 @@ router.post('/:id/participants', async (req, res) => {
       skipped.push({ nim: '', error: 'NIM kosong' });
       continue;
     }
-    // Empty kelas stays null (unchanged); a non-empty value must be a short class code.
+    // Empty kelas stays null (unchanged); a non-empty value must be a single letter A–F.
     let kelas = null;
     if (rawKelas != null && String(rawKelas).trim() !== '') {
       kelas = normalizeKelas(rawKelas);
       if (kelas === null) {
-        skipped.push({ nim, kelas: rawKelas, error: 'format kelas tidak valid (huruf/angka, maks 12 karakter)' });
+        skipped.push({ nim, kelas: rawKelas, error: 'kelas harus satu huruf A–F' });
         continue;
       }
     }

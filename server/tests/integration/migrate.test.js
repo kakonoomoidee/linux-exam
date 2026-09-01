@@ -36,7 +36,7 @@ describe('migrate: one-time kelas normalization', () => {
 
     // constraint is back
     const [chk] = await db.all(
-      "SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_code_chk'"
+      "SELECT 1 FROM pg_constraint WHERE conname = 'users_kelas_chk'"
     );
     expect(chk).toBeTruthy();
 
@@ -46,15 +46,9 @@ describe('migrate: one-time kelas normalization', () => {
     expect(Object.fromEntries(after.map((r) => [r.nim, r.kelas]))).toEqual(byNim);
   });
 
-  test('the re-added CHECK constraint rejects a malformed kelas code', async () => {
+  test('the re-added CHECK constraint rejects a non-A–F kelas', async () => {
     await expect(
-      db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140099', 'Z', 'student', 'kelas c')")
+      db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140099', 'Z', 'student', 'TI-3A')")
     ).rejects.toThrow();
-  });
-
-  test('the re-added CHECK constraint accepts an ad-hoc code beyond A–F', async () => {
-    await db.run("INSERT INTO users (nim, name, role, kelas) VALUES ('20220140098', 'Y', 'student', 'TI-1A')");
-    const [row] = await db.all("SELECT kelas FROM users WHERE nim = '20220140098'");
-    expect(row.kelas).toBe('TI-1A');
   });
 });
