@@ -50,6 +50,11 @@ services:
       DEFAULT_SESSION_DURATION_MINUTES: ${DEFAULT_SESSION_DURATION_MINUTES:-10}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # Telegram bot: compose reads the root .env for these; unset => bot runs in
+      # disabled/mock mode (no long-polling, link-code returns null botUsername).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      OTP_TTL_MINUTES: ${OTP_TTL_MINUTES:-10}
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     depends_on:
