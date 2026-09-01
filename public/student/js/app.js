@@ -32,8 +32,8 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 document.getElementById('change-pw-btn').addEventListener('click', submitPasswordChange);
 document.getElementById('logout-btn').addEventListener('click', logout);
+document.getElementById('dash-link').addEventListener('click', showDashDefault);
 document.getElementById('change-pw-link').addEventListener('click', showVoluntaryPasswordChange);
-document.getElementById('vol-change-pw-back-btn').addEventListener('click', showDashDefault);
 document.getElementById('vol-send-otp-btn').addEventListener('click', sendChangePwOtp);
 document.getElementById('vol-change-pw-btn').addEventListener('click', submitVoluntaryPasswordChange);
 document.getElementById('vol-pw-connect-tg').addEventListener('click',
@@ -148,6 +148,8 @@ async function showVoluntaryPasswordChange() {
   showScreen('dashboard');
   document.getElementById('dash-default-view').classList.add('hidden');
   document.getElementById('change-pw-view').classList.remove('hidden');
+  document.getElementById('dash-link').classList.remove('active');
+  document.getElementById('change-pw-link').classList.add('active');
   ['vol-current-pw', 'vol-otp-input', 'vol-new-pw', 'vol-confirm-pw'].forEach((id) => {
     document.getElementById(id).value = '';
   });
@@ -163,6 +165,8 @@ async function showVoluntaryPasswordChange() {
 function showDashDefault() {
   document.getElementById('change-pw-view').classList.add('hidden');
   document.getElementById('dash-default-view').classList.remove('hidden');
+  document.getElementById('change-pw-link').classList.remove('active');
+  document.getElementById('dash-link').classList.add('active');
 }
 
 /** Step 1: server checks the current password, then sends an OTP to the student's Telegram. */

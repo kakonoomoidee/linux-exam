@@ -34,8 +34,8 @@
 
     <!-- create: editable form (create state only — an existing session's metadata
          has no edit endpoint and is shown read-only in #summary-card) -->
-    <div class="card max-w-2xl" id="create-card">
-      <div class="grid sm:grid-cols-[1fr_140px_120px] gap-3">
+    <div class="card max-w-4xl" id="create-card">
+      <div class="grid sm:grid-cols-[1fr_160px] gap-3">
         <div>
           <label class="label" for="f-name" data-i18n="admin.sessionNameLabel">Nama sesi</label>
           <input id="f-name" class="field" data-i18n-ph="admin.sessionNamePlaceholder"
@@ -45,12 +45,12 @@
           <label class="label" for="f-duration" data-i18n="admin.durationPlaceholder">Durasi (menit)</label>
           <input id="f-duration" type="number" min="1" class="field" value="10" />
         </div>
-        <div>
-          <label class="label" data-i18n="admin.sessionUcpLabel">UCP</label>
-          <div id="f-ucp-toggle" class="flex gap-1" role="group" aria-label="UCP">
-            <button type="button" class="btn btn-sm btn-primary" data-ucp="1" aria-pressed="true">UCP 1</button>
-            <button type="button" class="btn btn-sm btn-ghost" data-ucp="2" aria-pressed="false">UCP 2</button>
-          </div>
+      </div>
+      <div class="mt-3">
+        <label class="label" data-i18n="admin.sessionUcpLabel">UCP</label>
+        <div id="f-ucp-toggle" class="flex gap-2" role="group" aria-label="UCP">
+          <button type="button" class="btn btn-primary flex-1" data-ucp="1" aria-pressed="true">UCP 1</button>
+          <button type="button" class="btn btn-ghost flex-1" data-ucp="2" aria-pressed="false">UCP 2</button>
         </div>
       </div>
       <button id="create-btn" class="btn btn-primary btn-sm mt-3" data-role="instruktur-visible"

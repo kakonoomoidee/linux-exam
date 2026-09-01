@@ -20,6 +20,7 @@
   "student.changePwTitle": "Ganti Password",
   "student.changePwSubtitle": "Password default harus diganti sebelum melanjutkan.",
   "student.changePwVoluntarySubtitle": "Ganti password akunmu. Kamu akan tetap masuk setelah menyimpan.",
+  "student.dashLink": "Dashboard",
   "student.changePwLink": "Ganti Password",
   "student.changePwDone": "Password berhasil diganti.",
   "student.changePwNeedTelegram": "Hubungkan Telegram dulu untuk mengganti password.",

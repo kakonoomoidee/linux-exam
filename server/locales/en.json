@@ -20,6 +20,7 @@
   "student.changePwTitle": "Change Password",
   "student.changePwSubtitle": "You must change the default password before continuing.",
   "student.changePwVoluntarySubtitle": "Change your account password. You'll stay signed in after saving.",
+  "student.dashLink": "Dashboard",
   "student.changePwLink": "Change Password",
   "student.changePwDone": "Password changed.",
   "student.changePwNeedTelegram": "Connect Telegram first to change your password.",
