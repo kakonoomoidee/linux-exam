@@ -126,6 +126,15 @@ async function openStudentForm(s) {
           <input id="sf-kelas" class="field" maxlength="1" value="${stuEsc(s.kelas || '')}" placeholder="A–F">
           <small class="meta-faint" style="display:block;margin-top:0.35rem">${stuEsc(t('admin.kelasFieldHelp'))}</small>
         </div>
+        <div>
+          <label class="label" for="sf-tg-username">${stuEsc(t('admin.telegramUsername'))}</label>
+          <input id="sf-tg-username" class="field" value="${stuEsc(s.telegram_username || '')}" placeholder="username">
+        </div>
+        <div>
+          <label class="label" for="sf-tg-chat-id">${stuEsc(t('admin.telegramChatId'))}</label>
+          <input id="sf-tg-chat-id" class="field" inputmode="numeric" value="${stuEsc(s.telegram_chat_id || '')}">
+          <small class="meta-faint" style="display:block;margin-top:0.35rem">${stuEsc(t('admin.telegramFieldHelp'))}</small>
+        </div>
       </div>`,
     width: 'min(480px, 94vw)',
     showCancelButton: true,
@@ -138,7 +147,17 @@ async function openStudentForm(s) {
         window.Swal.showValidationMessage(t('admin.kelasFieldHelp'));
         return false;
       }
-      return { name: document.getElementById('sf-name').value.trim(), kelas };
+      const chatId = document.getElementById('sf-tg-chat-id').value.trim();
+      if (chatId && !/^-?\d+$/.test(chatId)) {
+        window.Swal.showValidationMessage(t('admin.telegramChatId'));
+        return false;
+      }
+      return {
+        name: document.getElementById('sf-name').value.trim(),
+        kelas,
+        telegram_username: document.getElementById('sf-tg-username').value.trim().replace(/^@/, ''),
+        telegram_chat_id: chatId,
+      };
     },
   });
   if (!isConfirmed) return;

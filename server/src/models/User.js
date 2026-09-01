@@ -56,7 +56,8 @@ const User = {
   /** Every student row, for the global roster view. Nulls-last on kelas, then NIM. */
   listStudents() {
     return db.all(
-      "SELECT id, nim, name, kelas FROM users WHERE role = 'student' ORDER BY kelas NULLS LAST, nim"
+      `SELECT id, nim, name, kelas, telegram_username, telegram_chat_id
+         FROM users WHERE role = 'student' ORDER BY kelas NULLS LAST, nim`
     );
   },
 

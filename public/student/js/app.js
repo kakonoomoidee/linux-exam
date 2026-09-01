@@ -13,6 +13,7 @@ let pwChangeVoluntary = false; // true when the student opened change-password f
 const screens = {
   login: document.getElementById('login-screen'),
   changePassword: document.getElementById('change-password-screen'),
+  forgotPassword: document.getElementById('forgot-password-screen'),
   dashboard: document.getElementById('dashboard-screen'),
   waiting: document.getElementById('waiting-screen'),
   exam: document.getElementById('exam-screen'),
@@ -52,6 +53,19 @@ document.getElementById('join-code-input').addEventListener('input', (e) => {
 document.getElementById('join-code-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') joinSession();
 });
+
+// forgot-password flow
+document.getElementById('forgot-pw-link').addEventListener('click', showForgotPassword);
+document.getElementById('forgot-pw-back-btn').addEventListener('click', () => showScreen('login'));
+document.getElementById('forgot-pw-send-btn').addEventListener('click', forgotPasswordRequest);
+document.getElementById('forgot-pw-reset-btn').addEventListener('click', forgotPasswordReset);
+document.getElementById('forgot-nim-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') forgotPasswordRequest();
+});
+
+// telegram binding (dashboard card)
+document.getElementById('telegram-connect-btn').addEventListener('click', connectTelegram);
+document.getElementById('telegram-disconnect-btn').addEventListener('click', disconnectTelegram);
 
 /** Persist identity + the must-change flag together so a refresh knows where to land. */
 function persistUser(user, mustChangePassword) {
@@ -159,6 +173,7 @@ function enterDashboard() {
     av.style.background = a.bg;
   }
   loadHistory();
+  loadTelegramStatus();
 }
 
 async function loadHistory() {
@@ -659,6 +674,196 @@ async function resume() {
     /* fall through to dashboard */
   }
   enterDashboard();
+}
+
+// ---- forgot password ----
+function setForgotStep(n) {
+  document.getElementById('forgot-pw-step-indicator').textContent = t('student.stepIndicator', { n, total: 2 });
+}
+
+function showForgotPassword() {
+  ['forgot-nim-input', 'forgot-otp-input', 'forgot-new-pw-input', 'forgot-confirm-pw-input'].forEach((id) => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('forgot-otp-error').textContent = '';
+  document.getElementById('forgot-pw-generic-msg').textContent = '';
+  document.getElementById('forgot-pw-step1').classList.remove('hidden');
+  document.getElementById('forgot-pw-step2').classList.add('hidden');
+  setForgotStep(1);
+  const nim = document.getElementById('nim-input').value.trim();
+  if (nim) document.getElementById('forgot-nim-input').value = nim;
+  showScreen('forgotPassword');
+  document.getElementById('forgot-nim-input').focus();
+}
+
+function goToOtpStep() {
+  document.getElementById('forgot-pw-generic-msg').textContent = t('student.forgotPwGeneric');
+  document.getElementById('forgot-pw-step1').classList.add('hidden');
+  document.getElementById('forgot-pw-step2').classList.remove('hidden');
+  setForgotStep(2);
+  document.getElementById('forgot-otp-input').focus();
+}
+
+async function forgotPasswordRequest() {
+  const nim = document.getElementById('forgot-nim-input').value.trim();
+  if (!nim) return;
+  const btn = document.getElementById('forgot-pw-send-btn');
+  btn.disabled = true;
+  try {
+    // Response is intentionally generic (and constant-time) — advance regardless.
+    await fetch(`${API}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nim }),
+    });
+  } catch {
+    /* still advance — nothing here reveals whether the NIM exists */
+  } finally {
+    btn.disabled = false;
+  }
+  goToOtpStep();
+}
+
+async function forgotPasswordReset() {
+  const nim = document.getElementById('forgot-nim-input').value.trim();
+  const otp = document.getElementById('forgot-otp-input').value.trim();
+  const newPassword = document.getElementById('forgot-new-pw-input').value;
+  const confirm = document.getElementById('forgot-confirm-pw-input').value;
+  const errEl = document.getElementById('forgot-otp-error');
+  errEl.textContent = '';
+  if (!otp || !newPassword) return;
+  if (newPassword !== confirm) {
+    errEl.textContent = t('student.pwMismatch');
+    return;
+  }
+  const btn = document.getElementById('forgot-pw-reset-btn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nim, otp, newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errEl.textContent = window.i18n.apiError(data.error) || t('student.forgotPwResetFailed');
+      return;
+    }
+    showScreen('login');
+    document.getElementById('login-error').textContent = '';
+    window.ui.toast(data.message || t('student.forgotPwResetOk'));
+  } catch {
+    errEl.textContent = t('common.requestFailed', { status: 0 });
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---- telegram binding ----
+let telegramPollTimer = null;
+
+function renderTelegramStatus({ linked, username } = {}) {
+  const badge = document.getElementById('telegram-status');
+  const connectBtn = document.getElementById('telegram-connect-btn');
+  const disconnectBtn = document.getElementById('telegram-disconnect-btn');
+  if (linked) {
+    badge.className = 'badge badge-green';
+    badge.textContent = username ? t('student.telegramLinkedAs', { username }) : t('student.telegramLinked');
+    connectBtn.classList.add('hidden');
+    disconnectBtn.classList.remove('hidden');
+  } else {
+    badge.className = 'badge badge-gray';
+    badge.textContent = t('student.telegramNotLinked');
+    connectBtn.classList.remove('hidden');
+    disconnectBtn.classList.add('hidden');
+  }
+}
+
+async function loadTelegramStatus() {
+  try {
+    const res = await fetch(`${API}/me/telegram`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    renderTelegramStatus(await res.json());
+  } catch {
+    /* leave the default "not linked" state */
+  }
+}
+
+async function connectTelegram() {
+  let data;
+  try {
+    const res = await fetch(`${API}/me/telegram/link-code`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error);
+  } catch (err) {
+    window.ui.alert(window.i18n.apiError(err && err.message) || t('common.requestFailed', { status: 0 }), { icon: 'error' });
+    return;
+  }
+
+  const esc = window.ui.escapeHtml;
+  const botTarget = data.botUsername ? `@${esc(data.botUsername)}` : t('student.telegramYourBot');
+  const command = `/start ${data.code}`;
+  const html = `
+    <ol class="text-sm" style="text-align:left;padding-left:1.3em;line-height:1.9;margin:0 0 4px">
+      <li>${t('student.telegramStep1', { bot: botTarget })}</li>
+      <li>${esc(t('student.telegramStep2'))}</li>
+      <li>${esc(t('student.telegramStep3'))}</li>
+    </ol>
+    <div style="margin:14px 0;padding:12px;border-radius:10px;background:var(--surface-2);
+      font-family:var(--mono);font-size:1.3rem;letter-spacing:.15em;text-align:center;word-break:break-all">${esc(command)}</div>
+    <button type="button" id="tg-copy-btn" class="btn btn-ghost btn-sm btn-block">${esc(t('student.telegramCopyBtn'))}</button>
+    <p class="text-xs text-[color:var(--text-faint)] mt-2">${esc(t('student.telegramCodeTtl'))}</p>`;
+
+  window.ui.modal.fire({
+    title: t('student.telegramModalTitle'),
+    html,
+    confirmButtonText: t('common.close'),
+    didOpen: () => {
+      const copyBtn = document.getElementById('tg-copy-btn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          const done = () => window.ui.toast(t('student.telegramCopied'));
+          if (navigator.clipboard) navigator.clipboard.writeText(command).then(done, () => {});
+        });
+      }
+      clearInterval(telegramPollTimer);
+      telegramPollTimer = setInterval(async () => {
+        try {
+          const r = await fetch(`${API}/me/telegram`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) return;
+          const s = await r.json();
+          if (s.linked) {
+            clearInterval(telegramPollTimer);
+            renderTelegramStatus(s);
+            window.Swal.close();
+            window.ui.toast(t('student.telegramConnected'), 'success');
+          }
+        } catch {
+          /* keep polling */
+        }
+      }, 3000);
+    },
+    willClose: () => clearInterval(telegramPollTimer),
+  });
+}
+
+async function disconnectTelegram() {
+  const ok = await window.ui.confirm(t('student.telegramDisconnectConfirm'), { icon: 'warning' });
+  if (!ok) return;
+  try {
+    const res = await fetch(`${API}/me/telegram`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error();
+    renderTelegramStatus({ linked: false });
+    window.ui.toast(t('student.telegramDisconnected'));
+  } catch {
+    window.ui.alert(t('common.requestFailed', { status: 0 }), { icon: 'error' });
+  }
 }
 
 if (token) resume();

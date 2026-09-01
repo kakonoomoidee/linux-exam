@@ -1,0 +1,25 @@
+<section id="tab-audit" class="tab-content hidden pane-wrap">
+
+  <header class="mb-6">
+    <h1 class="page-title" data-i18n="admin.auditHeading">Audit Log</h1>
+    <p class="page-subtitle" data-i18n="admin.auditSubtitle">Catatan login, perubahan binding Telegram, dan reset password.</p>
+  </header>
+
+  <div class="card">
+    <div class="flex flex-wrap gap-2 items-center mb-4">
+      <input id="audit-nim" type="search" autocomplete="off" class="field w-auto min-w-[220px]"
+        data-i18n-ph="admin.auditSearchPlaceholder" placeholder="Cari NIM / nama mahasiswa…" />
+      <select id="audit-action" class="field w-auto min-w-[180px]" aria-label="Filter aksi"></select>
+      <label class="meta-faint text-sm flex items-center gap-1">
+        <span data-i18n="admin.auditFrom">Dari tanggal</span>
+        <input id="audit-from" type="date" class="field w-auto" />
+      </label>
+      <label class="meta-faint text-sm flex items-center gap-1">
+        <span data-i18n="admin.auditTo">Sampai tanggal</span>
+        <input id="audit-to" type="date" class="field w-auto" />
+      </label>
+      <button id="audit-apply" class="btn btn-primary btn-sm" data-i18n="admin.showBtn">Tampilkan</button>
+    </div>
+    <div id="audit-list"></div>
+  </div>
+</section>

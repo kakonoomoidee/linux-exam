@@ -119,3 +119,27 @@ worth it. Manual scenario:
      login screen. No dashboard, no half-rendered state.
 4. Full-flow check (login → change password → join → wait for the post-join
    poll): completes into the waiting/exam screen with no 401.
+
+---
+
+## 7. Telegram-OTP password reset — deliberate ceilings (feat/telegram-otp-password-reset)
+
+Shipped simplifications, each with a known upgrade path. None block correctness
+for a single-process deployment (which is what this app is).
+
+- **Throttle state is in-memory** (`passwordResetService.js` — `requests` /
+  `verifies` Maps, same pattern as `lockService.js`). A process restart clears
+  the per-NIM request (3/hr) and verify (5/window) counters. Upgrade path: move
+  the counters to a `password_reset_throttle` table (or Redis) if the app ever
+  runs more than one instance.
+- **Long-poll offset is in-memory** (`lib/telegram.js` `RealTelegram._offset`).
+  After a restart the bot re-reads the last few Telegram updates, so `/start
+  <code>` delivery is at-least-once. Safe because link codes are single-use and
+  expire; a repeat just hits the "code already used / expired" reply.
+- **OTP rows are cleaned per-user, not swept** (`requestReset` deletes that
+  user's consumed rows on each new request; `telegram_link_codes` similarly).
+  No cron. A student who requests once and never again leaves one consumed row
+  behind forever — negligible, revisit only if the tables grow surprisingly.
+- **No automated coverage for the new student-facing JS** (forgot-password
+  screen, "Hubungkan Telegram" card) — same reason as finding #6: no jsdom
+  harness. Manual checklist is in the PR description (real-bot walkthrough).
