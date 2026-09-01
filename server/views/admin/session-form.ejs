@@ -46,11 +46,11 @@
           <input id="f-duration" type="number" min="1" class="field" value="10" />
         </div>
         <div>
-          <label class="label" for="f-ucp" data-i18n="admin.sessionUcpLabel">UCP</label>
-          <select id="f-ucp" class="field">
-            <option value="1">UCP 1</option>
-            <option value="2">UCP 2</option>
-          </select>
+          <label class="label" data-i18n="admin.sessionUcpLabel">UCP</label>
+          <div id="f-ucp-toggle" class="flex gap-1" role="group" aria-label="UCP">
+            <button type="button" class="btn btn-sm btn-primary" data-ucp="1" aria-pressed="true">UCP 1</button>
+            <button type="button" class="btn btn-sm btn-ghost" data-ucp="2" aria-pressed="false">UCP 2</button>
+          </div>
         </div>
       </div>
       <button id="create-btn" class="btn btn-primary btn-sm mt-3" data-role="instruktur-visible"

@@ -14,6 +14,7 @@
   let sessionId = match && match[1] !== 'new' ? match[1] : null;
   let socket = null;
   let countdownInterval = null;
+  let formUcp = 1; // #f-ucp-toggle segmented buttons, same pattern as Bank Soal's #bank-ucp-toggle
 
   function logout() {
     localStorage.removeItem('tekser_admin_token');
@@ -187,10 +188,22 @@
     socket.on('admin:violation', () => { if (sessionId) loadSession(); });
   }
 
+  document.querySelectorAll('#f-ucp-toggle button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      formUcp = parseInt(btn.dataset.ucp, 10);
+      document.querySelectorAll('#f-ucp-toggle button').forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle('btn-primary', on);
+        b.classList.toggle('btn-ghost', !on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    });
+  });
+
   $('create-btn').addEventListener('click', async () => {
     const name = $('f-name').value.trim();
     const duration_minutes = parseInt($('f-duration').value, 10) || 10;
-    const ucp = parseInt($('f-ucp').value, 10) || 1;
+    const ucp = formUcp;
     if (!name) {
       $('create-error').textContent = t('admin.sessionNameRequired');
       return;
