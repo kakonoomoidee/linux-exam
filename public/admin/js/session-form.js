@@ -100,6 +100,10 @@
       `<span>${t('common.variant')} ${p.variant_index}</span>`,
       p.kelas ? `<span>${esc(p.kelas)}</span>` : '',
     ].filter(Boolean).join('');
+    // live read-only screen mirror — only while the container is up
+    const watchBtn = p.container_status === 'active'
+      ? `<button class="watch-term-btn btn btn-sm btn-ghost" data-token="${esc(p.session_token)}" data-name="${esc(p.name || p.nim)}">👁 ${t('admin.watchLive')}</button>`
+      : '';
     return `<div class="card-row">
       ${window.ui.avatarHtml(p.name || p.nim)}
       <div class="card-row__identity">
@@ -109,6 +113,7 @@
       <div class="card-row__aside">
         ${lockBadge}
         ${violationPill}
+        ${watchBtn}
         ${containerPill(p.container_status)}
       </div>
     </div>`;
@@ -129,6 +134,48 @@
           loadSession();
         })
       );
+    $('participant-list')
+      .querySelectorAll('.watch-term-btn')
+      .forEach((btn) =>
+        btn.addEventListener('click', () => openWatchModal(btn.dataset.token, btn.dataset.name))
+      );
+  }
+
+  // Read-only live mirror of a student's terminal. Reuses the shared admin
+  // socket; xterm has disableStdin and no onData handler, so nothing the staff
+  // member does here can ever reach the container.
+  function openWatchModal(sessionToken, name) {
+    connectSocket(); // idempotent — guarantees `socket` exists
+    let term = null;
+    const onOutput = (d) => { if (term) term.write(d); };
+    const onErr = (e) => { if (term) term.writeln('\r\n\x1b[33m' + (e.message || 'error') + '\x1b[0m'); };
+    const onClosed = () => { if (term) term.writeln('\r\n\x1b[33m── ' + t('admin.watchEnded') + ' ──\x1b[0m'); };
+
+    window.ui.modal.fire({
+      title: `👁 ${name}`,
+      html: '<div id="watch-term" style="height:60vh"></div>',
+      width: 'min(920px, 96vw)',
+      showConfirmButton: false,
+      showCloseButton: true,
+      didOpen: () => {
+        term = new Terminal({
+          cols: 80, rows: 24, disableStdin: true, cursorBlink: false,
+          theme: { background: '#000000' }, fontSize: 13,
+        });
+        term.open(document.getElementById('watch-term'));
+        socket.on('terminal:output', onOutput);
+        socket.on('terminal:error', onErr);
+        socket.on('terminal:closed', onClosed);
+        socket.emit('admin:watch-terminal', { token: adminToken, sessionToken });
+      },
+      willClose: () => {
+        socket.emit('admin:unwatch-terminal', { sessionToken });
+        socket.off('terminal:output', onOutput);
+        socket.off('terminal:error', onErr);
+        socket.off('terminal:closed', onClosed);
+        if (term) term.dispose();
+      },
+    });
   }
 
   function connectSocket() {
