@@ -153,7 +153,9 @@
 
     window.ui.modal.fire({
       title: `👁 ${name}`,
-      html: '<div id="watch-term" style="height:60vh"></div>',
+      // text-align:left overrides SweetAlert2's .swal2-html-container { text-align: center },
+      // which otherwise floats the fixed 80×24 grid in the middle of the modal.
+      html: '<div id="watch-term" style="height:60vh;text-align:left"></div>',
       width: 'min(920px, 96vw)',
       showConfirmButton: false,
       showCloseButton: true,
