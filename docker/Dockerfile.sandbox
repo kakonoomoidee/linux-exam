@@ -1,6 +1,6 @@
 # The per-student exam environment. Keep this in sync with whatever the
 # 8 pertemuan actually covered — add packages here, not ad-hoc per question.
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash coreutils util-linux findutils grep sed gawk \
