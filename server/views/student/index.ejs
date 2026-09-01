@@ -31,7 +31,41 @@
       <input id="password-input" type="password" class="field mb-4" data-i18n-ph="student.passwordPlaceholder"
         placeholder="Password (default: NIM)" autocomplete="off" />
       <button id="login-btn" class="btn btn-primary btn-block" data-i18n="common.login">Masuk</button>
+      <button id="forgot-pw-link" class="btn btn-ghost btn-sm btn-block mt-2" data-i18n="student.forgotPwLink">Lupa Password?</button>
       <p id="login-error" class="text-[color:var(--danger)] text-sm mt-3 min-h-[20px]"></p>
+    </div>
+  </div>
+
+  <!-- forgot password: NIM -> OTP (via Telegram) -> new password -->
+  <div id="forgot-password-screen" class="screen hidden min-h-screen flex items-center justify-center p-6">
+    <div class="card w-full max-w-sm text-center">
+      <div class="brand-mark mx-auto mb-4">&gt;_</div>
+      <h1 class="text-lg font-bold mb-1" data-i18n="student.forgotPwTitle">Lupa Password</h1>
+      <p id="forgot-pw-step-indicator" class="text-xs uppercase tracking-[0.15em] text-[color:var(--text-faint)] mb-4"></p>
+
+      <div id="forgot-pw-step1">
+        <p class="text-sm text-[color:var(--text-faint)] mb-6" data-i18n="student.forgotPwStep1Sub">
+          Masukkan NIM kamu. Kalau Telegram sudah terhubung, kode OTP akan dikirim ke sana.
+        </p>
+        <label class="label text-left" for="forgot-nim-input" data-i18n="common.nim">NIM</label>
+        <input id="forgot-nim-input" class="field mb-4" autocomplete="off" inputmode="numeric" />
+        <button id="forgot-pw-send-btn" class="btn btn-primary btn-block" data-i18n="student.forgotPwSendBtn">Kirim OTP</button>
+      </div>
+
+      <div id="forgot-pw-step2" class="hidden">
+        <p id="forgot-pw-generic-msg" class="text-sm text-[color:var(--text-muted)] mb-5" aria-live="polite"></p>
+        <label class="label text-left" for="forgot-otp-input" data-i18n="student.otpLabel">Kode OTP</label>
+        <input id="forgot-otp-input" class="field mb-2 text-center tracking-[0.3em] font-mono"
+          inputmode="numeric" autocomplete="one-time-code" maxlength="6" />
+        <p id="forgot-otp-error" class="text-[color:var(--danger)] text-sm mb-3 min-h-[18px]"></p>
+        <label class="label text-left" for="forgot-new-pw-input" data-i18n="student.newPw">Password baru</label>
+        <input id="forgot-new-pw-input" type="password" class="field mb-3" autocomplete="off" />
+        <label class="label text-left" for="forgot-confirm-pw-input" data-i18n="student.confirmPw">Ulangi password baru</label>
+        <input id="forgot-confirm-pw-input" type="password" class="field mb-4" autocomplete="off" />
+        <button id="forgot-pw-reset-btn" class="btn btn-primary btn-block" data-i18n="student.forgotPwResetBtn">Simpan Password Baru</button>
+      </div>
+
+      <button id="forgot-pw-back-btn" class="btn btn-ghost btn-sm btn-block mt-2" data-i18n="student.backToLogin">Kembali ke Login</button>
     </div>
   </div>
 
@@ -100,6 +134,18 @@
             <button id="join-btn" class="btn btn-primary btn-sm shrink-0" data-i18n="student.joinBtn">Gabung</button>
           </div>
           <p id="join-error" class="text-[color:var(--danger)] text-sm mt-2 min-h-[20px]"></p>
+        </div>
+
+        <div class="card">
+          <div class="card-title" data-i18n="student.telegramHeading">Hubungkan Telegram</div>
+          <p class="text-sm text-[color:var(--text-faint)] mb-3" data-i18n="student.telegramSub">
+            Sambungkan akun Telegram untuk bisa reset password lewat OTP.
+          </p>
+          <div class="flex items-center gap-3 flex-wrap">
+            <span id="telegram-status" class="badge badge-gray" data-i18n="student.telegramNotLinked">Belum terhubung</span>
+            <button id="telegram-connect-btn" class="btn btn-primary btn-sm" data-i18n="student.telegramConnectBtn">Hubungkan</button>
+            <button id="telegram-disconnect-btn" class="btn btn-ghost btn-sm hidden" data-i18n="student.telegramDisconnectBtn">Putuskan</button>
+          </div>
         </div>
 
         <div class="card">

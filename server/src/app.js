@@ -22,6 +22,7 @@ const adminQuestions = require('./routes/adminQuestions');
 const adminReview = require('./routes/adminReview');
 const adminStaff = require('./routes/adminStaff');
 const adminStudents = require('./routes/adminStudents');
+const adminAudit = require('./routes/adminAudit');
 const studentRoutes = require('./routes/student');
 const cmdLogRoutes = require('./routes/cmdLog');
 
@@ -41,6 +42,7 @@ function buildApp() {
   app.use('/api/admin/review', adminReview);
   app.use('/api/admin/staff', adminStaff);
   app.use('/api/admin/students', adminStudents);
+  app.use('/api/admin/audit', adminAudit);
   app.use('/api/cmd-log', cmdLogRoutes); // must come before the generic '/api' mount below
   app.use('/api', studentRoutes);
 

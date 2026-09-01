@@ -1,4 +1,5 @@
 const express = require('express');
+const config = require('../config');
 const { requireAuth, requirePasswordChanged, signToken } = require('../middleware/auth');
 const { hash, checkStudentPassword } = require('../lib/password');
 const db = require('../db/connection');
@@ -8,6 +9,7 @@ const User = require('../models/User');
 const { Submission } = require('../models/Submission');
 const examService = require('../services/examService');
 const timerService = require('../services/timerService');
+const telegramBindService = require('../services/telegramBindService');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -39,6 +41,28 @@ router.post('/me/password', async (req, res) => {
 
 // Everything below is off-limits until the default password has been changed.
 router.use(requirePasswordChanged);
+
+/** Current Telegram binding state for the dashboard card. */
+router.get('/me/telegram', async (req, res) => {
+  const user = await User.findById(req.user.id);
+  res.json({ linked: !!(user && user.telegram_chat_id), username: (user && user.telegram_username) || null });
+});
+
+/** Mint a one-time code the student sends to the bot as `/start <code>`. */
+router.post('/me/telegram/link-code', async (req, res) => {
+  const row = await telegramBindService.issueLinkCode(req.user.id);
+  res.json({ code: row.code, expiresAt: row.expires_at, botUsername: config.telegramBotUsername });
+});
+
+/**
+ * Self-unlink. Safe: a logged-in student removing their own binding grants no
+ * access, and re-linking still needs a valid session + a fresh code.
+ */
+router.delete('/me/telegram', async (req, res) => {
+  const user = await User.findById(req.user.id);
+  await telegramBindService.unlinkSelf(user, 'web');
+  res.json({ linked: false });
+});
 
 /** The active session + question list + live progress for the logged-in student. */
 router.get('/me/active-participant', async (req, res) => {

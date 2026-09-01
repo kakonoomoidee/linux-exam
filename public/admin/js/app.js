@@ -45,6 +45,7 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     if (btn.dataset.tab === 'students') window.loadStudents?.();
     if (btn.dataset.tab === 'questions') window.loadQuestionBank?.();
     if (btn.dataset.tab === 'staff') window.loadStaff?.();
+    if (btn.dataset.tab === 'audit') window.loadAudit?.();
   });
 });
 function boot() {

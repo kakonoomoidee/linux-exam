@@ -1,6 +1,7 @@
 const XLSX = require('xlsx');
 const Question = require('../models/Question');
 const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 const { normalizeKelas } = require('../lib/kelas');
 
 /**
@@ -105,13 +106,15 @@ async function importFromFile(filePath) {
 }
 
 /**
- * Global student roster import. Columns (case-insensitive): NIM, Nama, Kelas.
+ * Global student roster import. Columns (case-insensitive): NIM, Nama, Kelas,
+ * Telegram Username, Telegram Chat ID (the last two optional).
  * Reuses User.findOrCreateStudent — creates missing students (password = NIM,
- * forced change on first login) and backfills name/kelas ONLY where the current
- * value is NULL, never overwriting data staff or the student already set.
+ * forced change on first login) and backfills name/kelas/telegram ONLY where the
+ * current value is NULL, never overwriting data staff or the student already set.
  * Invalid kelas (not A–F after normalization) is reported, not silently dropped.
+ * A newly-set Telegram binding writes a telegram_bind_staff_override audit row.
  */
-async function importStudentsFromFile(filePath) {
+async function importStudentsFromFile(filePath, actorId = null) {
   const workbook = XLSX.readFile(filePath);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : [];
@@ -125,6 +128,8 @@ async function importStudentsFromFile(filePath) {
     const nim = String(r.nim || '').trim();
     const name = String(r.nama || r.name || '').trim() || null;
     const kelasRaw = String(r.kelas || '').trim();
+    const tgUser = String(r.telegram_username || '').trim().replace(/^@/, '') || null;
+    const tgChat = String(r.telegram_chat_id || '').trim() || null;
 
     if (!nim) {
       errors.push({ row: i + 2, error: 'NIM kosong' });
@@ -138,11 +143,32 @@ async function importStudentsFromFile(filePath) {
         continue;
       }
     }
+    if (tgChat && !/^-?\d+$/.test(tgChat)) {
+      errors.push({ row: i + 2, nim, error: 'Telegram Chat ID harus berupa angka' });
+      continue;
+    }
 
     const before = await User.findByNim(nim);
-    await User.findOrCreateStudent(nim, name, kelas);
+    await User.findOrCreateStudent(nim, name, kelas, { username: tgUser, chatId: tgChat });
     if (!before) created++;
     else if ((name && !before.name) || (kelas && !before.kelas)) backfilled++;
+
+    const boundNow =
+      (tgChat && !(before && before.telegram_chat_id)) || (tgUser && !(before && before.telegram_username));
+    if (boundNow) {
+      await AuditLog.record({
+        actorType: 'staff',
+        actorId,
+        action: 'telegram_bind_staff_override',
+        targetUserId: (await User.findByNim(nim)).id,
+        metadata: {
+          source: 'excel_import',
+          chat_id: tgChat,
+          telegram_username: tgUser,
+          previous_chat_id: (before && before.telegram_chat_id) || null,
+        },
+      }).catch((err) => console.error('[audit] telegram_bind_staff_override (import)', err));
+    }
   }
 
   return { totalRows: rows.length, created, backfilled, errors };
