@@ -107,3 +107,50 @@ ALTER TABLE questions ADD COLUMN IF NOT EXISTS ucp SMALLINT NOT NULL DEFAULT 1; 
 CREATE INDEX IF NOT EXISTS idx_cmdlog_participant ON command_logs(participant_id, question_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_participant ON submissions(participant_id);
 CREATE INDEX IF NOT EXISTS idx_participants_session ON session_participants(session_id);
+
+-- Telegram binding + password-reset-via-OTP + audit log. Additive and idempotent —
+-- safe to run on an existing production database with data (schema.sql runs on every boot).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_chat_id  TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_username TEXT;
+-- One Telegram account maps to at most one student. Staff can move a binding
+-- (clear the old row's field first, or PATCH the new student) if a phone changes.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_telegram_chat_id
+  ON users(telegram_chat_id) WHERE telegram_chat_id IS NOT NULL;
+
+-- Single-use codes a student sends to the bot as `/start <code>` to link their
+-- Telegram account. Short TTL; caller invalidates any prior unused code first.
+CREATE TABLE IF NOT EXISTS telegram_link_codes (
+  code        TEXT PRIMARY KEY,                       -- joinCode.generate(): 32-char alphabet, length 6
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  expires_at  TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_tg_link_codes_user ON telegram_link_codes(user_id);
+
+-- Forgot-password OTPs. The 6-digit code is bcrypt-hashed at rest, never stored
+-- plaintext. Requesting a new OTP consumes any pending one (see passwordResetService).
+CREATE TABLE IF NOT EXISTS password_reset_otps (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  otp_hash    TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_pw_reset_otps_user ON password_reset_otps(user_id);
+
+-- Oversight trail: who logged in, who changed a Telegram binding, password resets.
+-- action is a free string (additive — new event types need no migration).
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id             SERIAL PRIMARY KEY,
+  actor_type     TEXT NOT NULL,                       -- 'student' | 'staff' | 'system'
+  actor_id       INTEGER REFERENCES users(id),        -- nullable (system)
+  action         TEXT NOT NULL,
+  target_user_id INTEGER REFERENCES users(id),        -- nullable
+  metadata       JSONB NOT NULL DEFAULT '{}',
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target  ON audit_logs(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action  ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);

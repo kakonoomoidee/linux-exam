@@ -32,6 +32,12 @@ module.exports = {
 
   defaultSessionDurationMinutes: parseInt(process.env.DEFAULT_SESSION_DURATION_MINUTES || '10', 10),
 
+  // Telegram bot for forgot-password OTP. Unset => feature disabled (lib/telegram
+  // falls back to a no-op MockTelegram that logs instead of sending).
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
+  telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || null, // shown in the "/start <code>" instruction
+  otpTtlMinutes: parseInt(process.env.OTP_TTL_MINUTES || '10', 10),
+
   // Admin account re-seeded on every boot (see db/migrate.js).
   adminUser: process.env.ADMIN_USER || 'admin',
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123',

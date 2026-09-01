@@ -32,12 +32,17 @@ async function truncateAll() {
     DELETE FROM session_participants;
     DELETE FROM sessions;
     DELETE FROM questions;
+    DELETE FROM audit_logs;
+    DELETE FROM password_reset_otps;
+    DELETE FROM telegram_link_codes;
     DELETE FROM users;
     ALTER SEQUENCE command_logs_id_seq RESTART WITH 1;
     ALTER SEQUENCE submissions_id_seq RESTART WITH 1;
     ALTER SEQUENCE session_participants_id_seq RESTART WITH 1;
     ALTER SEQUENCE sessions_id_seq RESTART WITH 1;
     ALTER SEQUENCE questions_id_seq RESTART WITH 1;
+    ALTER SEQUENCE audit_logs_id_seq RESTART WITH 1;
+    ALTER SEQUENCE password_reset_otps_id_seq RESTART WITH 1;
     ALTER SEQUENCE users_id_seq RESTART WITH 1;
   `);
 }
