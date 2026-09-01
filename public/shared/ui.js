@@ -258,14 +258,33 @@
     els[idx].scrollIntoView({ block: 'nearest' });
   }
 
+  // The panel is position:fixed, so it isn't clipped by a SweetAlert2 modal.
+  // Inside one, "space below the trigger" must be measured against the popup
+  // (and its action bar), not the viewport — otherwise the empty area under the
+  // centered modal reads as free space and the panel covers Simpan/Batal.
+  function panelBounds(trigger) {
+    const popup = trigger.closest('.swal2-popup');
+    if (!popup) return { top: 0, bottom: window.innerHeight };
+    const pr = popup.getBoundingClientRect();
+    const actions = popup.querySelector('.swal2-actions');
+    return {
+      top: Math.max(pr.top, 0),
+      bottom: Math.min(actions ? actions.getBoundingClientRect().top - 6 : pr.bottom, window.innerHeight),
+    };
+  }
+
   function positionPanel(ctx) {
     const r = ctx.trigger.getBoundingClientRect();
     const p = ctx.panel;
+    const b = panelBounds(ctx.trigger);
     p.style.left = r.left + 'px';
     p.style.minWidth = r.width + 'px';
-    const below = window.innerHeight - r.bottom;
-    const above = below < 260 && r.top > below;
+    const below = b.bottom - r.bottom;
+    const aboveSpace = r.top - b.top;
+    const above = below < 260 && aboveSpace > below;
     p.classList.toggle('ui-select__panel--above', above);
+    // ponytail: 96px min floor if the modal is tighter than that; live with a small overlap
+    p.style.maxHeight = Math.min(256, Math.max(96, (above ? aboveSpace : below) - 8)) + 'px';
     if (above) {
       p.style.top = 'auto';
       p.style.bottom = window.innerHeight - r.top + 4 + 'px';
@@ -286,6 +305,9 @@
     ctx.panel.focus();
     requestAnimationFrame(() => ctx.panel.classList.add('is-open'));
     ctx._dismiss = (e) => {
+      // scroll fires on the window (capture) even when it's the panel's own
+      // overflow scrolling — that must not close the panel.
+      if (e.type === 'scroll' && ctx.panel.contains(e.target)) return;
       if (e.type === 'pointerdown' && ctx.wrap.contains(e.target)) return;
       closePanel(ctx, e.type !== 'pointerdown');
     };
