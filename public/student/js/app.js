@@ -806,16 +806,27 @@ async function connectTelegram() {
   const esc = window.ui.escapeHtml;
   const botTarget = data.botUsername ? `@${esc(data.botUsername)}` : t('student.telegramYourBot');
   const command = `/start ${data.code}`;
+  const deepLink = data.botUsername
+    ? `https://t.me/${encodeURIComponent(data.botUsername)}?start=${encodeURIComponent(data.code)}`
+    : null;
+
+  const deepLinkBlock = deepLink
+    ? `<a class="btn btn-primary btn-block" target="_blank" rel="noopener" href="${esc(deepLink)}">${esc(t('student.telegramOpenBtn'))}</a>
+       <p class="text-xs text-[color:var(--text-faint)] mt-2 mb-1">${esc(t('student.telegramCodeTtl'))}</p>
+       <div class="section-label mt-4 mb-2" style="text-align:left">${esc(t('student.telegramManualFallback'))}</div>`
+    : '';
+
   const html = `
+    ${deepLinkBlock}
     <ol class="text-sm" style="text-align:left;padding-left:1.3em;line-height:1.9;margin:0 0 4px">
       <li>${t('student.telegramStep1', { bot: botTarget })}</li>
       <li>${esc(t('student.telegramStep2'))}</li>
       <li>${esc(t('student.telegramStep3'))}</li>
     </ol>
-    <div style="margin:14px 0;padding:12px;border-radius:10px;background:var(--surface-2);
+    <div style="margin:10px 0;padding:12px;border-radius:10px;background:var(--surface-2);
       font-family:var(--mono);font-size:1.3rem;letter-spacing:.15em;text-align:center;word-break:break-all">${esc(command)}</div>
     <button type="button" id="tg-copy-btn" class="btn btn-ghost btn-sm btn-block">${esc(t('student.telegramCopyBtn'))}</button>
-    <p class="text-xs text-[color:var(--text-faint)] mt-2">${esc(t('student.telegramCodeTtl'))}</p>`;
+    ${deepLink ? '' : `<p class="text-xs text-[color:var(--text-faint)] mt-2">${esc(t('student.telegramCodeTtl'))}</p>`}`;
 
   window.ui.modal.fire({
     title: t('student.telegramModalTitle'),

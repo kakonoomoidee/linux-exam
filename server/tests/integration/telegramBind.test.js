@@ -64,8 +64,10 @@ describe('self-service Telegram binding', () => {
     res = await request(app).get('/api/me/telegram').set(as(s));
     expect(res.body.linked).toBe(false);
 
-    const audit = await db.get(`SELECT * FROM audit_logs WHERE action = 'telegram_bind_self' ORDER BY id DESC LIMIT 1`);
-    expect(audit.metadata.unlinked).toBe(true);
+    const audit = await db.get(`SELECT * FROM audit_logs WHERE action = 'telegram_unlink_self' ORDER BY id DESC LIMIT 1`);
+    expect(audit.actor_id).toBe(s.id);
+    expect(audit.metadata.source).toBe('web');
+    expect(audit.metadata.previous_chat_id).toBe('77');
   });
 });
 

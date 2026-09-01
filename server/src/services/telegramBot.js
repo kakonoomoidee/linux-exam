@@ -1,22 +1,89 @@
 /**
  * Long-polling bot loop, started at boot from src/server.js. Thin wiring only:
- * message parsing lives here, the actual binding work is in telegramBindService.
+ * command parsing lives here, the real work is in telegram*Service.js.
  * In tests nothing calls start() — they invoke handleMessage() directly.
  */
 const config = require('../config');
 const telegram = require('./telegramClient');
-const { redeemLinkCode } = require('./telegramBindService');
+const User = require('../models/User');
+const { redeemLinkCode, unlinkSelf } = require('./telegramBindService');
+const passwordResetService = require('./passwordResetService');
+const telegramActionService = require('./telegramActionService');
 
 const HELP =
-  'Halo! Bot ini dipakai Tekser untuk verifikasi Telegram dan OTP reset password.\n' +
-  'Buka dashboard Tekser, klik "Hubungkan Telegram", lalu kirim: /start <kode>';
+  'Bot Tekser. Perintah yang tersedia:\n' +
+  '/start <kode> — hubungkan akun (ambil kode dari dashboard)\n' +
+  '/status — lihat akun yang terhubung ke chat ini\n' +
+  '/changepass — minta kode reset password\n' +
+  '/unlink — putuskan koneksi Telegram (perlu konfirmasi)\n' +
+  '/confirm <kode> — konfirmasi permintaan /unlink';
+
+const NOT_LINKED = 'Chat ini belum terhubung. Kirim /start <kode> dari dashboard Tekser dulu.';
 
 async function handleMessage(msg) {
-  const text = (msg.text || '').trim();
-  const m = /^\/start(?:@\S+)?(?:\s+(\S+))?/i.exec(text);
-  if (!m) return telegram.sendMessage(msg.chat.id, HELP);
-  if (!m[1]) return telegram.sendMessage(msg.chat.id, HELP);
-  return redeemLinkCode(m[1], msg.chat.id, msg.chat.username);
+  const chatId = msg.chat.id;
+  const m = /^\/([a-z]+)(?:@\S+)?(?:\s+(.*))?$/i.exec((msg.text || '').trim());
+  const cmd = m && m[1].toLowerCase();
+  const arg = ((m && m[2]) || '').trim();
+
+  switch (cmd) {
+    case 'start':
+      return arg ? redeemLinkCode(arg, chatId, msg.chat.username) : telegram.sendMessage(chatId, HELP);
+    case 'status':
+      return handleStatus(chatId);
+    case 'changepass':
+      return handleChangepass(chatId);
+    case 'unlink':
+      return handleUnlink(chatId);
+    case 'confirm':
+      return handleConfirm(chatId, arg);
+    default:
+      return telegram.sendMessage(chatId, HELP);
+  }
+}
+
+async function handleStatus(chatId) {
+  const user = await User.findByTelegramChatId(chatId);
+  return telegram.sendMessage(
+    chatId,
+    user
+      ? `Terhubung ke akun Tekser:\nNIM: ${user.nim}\nNama: ${user.name || '-'}`
+      : 'Belum terhubung. Kirim /start <kode> dari dashboard Tekser.'
+  );
+}
+
+async function handleChangepass(chatId) {
+  const user = await User.findByTelegramChatId(chatId);
+  if (!user) return telegram.sendMessage(chatId, NOT_LINKED);
+  const r = await passwordResetService.requestResetForUser(user);
+  if (r.throttled) {
+    return telegram.sendMessage(chatId, 'Terlalu banyak permintaan reset. Coba lagi dalam 1 jam.');
+  }
+  // issueResetOtp already sent the OTP message.
+}
+
+async function handleUnlink(chatId) {
+  const user = await User.findByTelegramChatId(chatId);
+  if (!user) return telegram.sendMessage(chatId, NOT_LINKED);
+  const r = await telegramActionService.requestActionOtp(chatId, 'unlink');
+  if (r.throttled) return telegram.sendMessage(chatId, 'Terlalu banyak permintaan. Coba lagi nanti.');
+  return telegram.sendMessage(
+    chatId,
+    `Kode konfirmasi: ${r.code}\nBalas /confirm ${r.code} untuk memutus koneksi Telegram. Berlaku 5 menit.`
+  );
+}
+
+async function handleConfirm(chatId, arg) {
+  if (!arg) return telegram.sendMessage(chatId, 'Format: /confirm <kode>');
+  const user = await User.findByTelegramChatId(chatId);
+  if (!user) return telegram.sendMessage(chatId, NOT_LINKED);
+  const r = await telegramActionService.confirmActionOtp(chatId, 'unlink', arg);
+  if (!r.ok) return telegram.sendMessage(chatId, 'Kode salah atau sudah kadaluarsa.');
+  await unlinkSelf(user, 'telegram_confirm');
+  return telegram.sendMessage(
+    chatId,
+    '✅ Koneksi Telegram diputus. Kirim /start <kode> dari dashboard untuk menghubungkan lagi.'
+  );
 }
 
 function start() {

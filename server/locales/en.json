@@ -293,6 +293,8 @@
   "student.telegramConnectBtn": "Connect",
   "student.telegramDisconnectBtn": "Disconnect",
   "student.telegramModalTitle": "Connect Telegram",
+  "student.telegramOpenBtn": "Open in Telegram",
+  "student.telegramManualFallback": "Or send it manually:",
   "student.telegramStep1": "Open Telegram and find {bot}",
   "student.telegramStep2": "Send the message below to that bot",
   "student.telegramStep3": "Wait for the confirmation to appear on this page",
@@ -324,6 +326,7 @@
   "admin.action.telegram_bind_staff_override": "Telegram override (staff)",
   "admin.action.password_reset_requested": "Password reset requested",
   "admin.action.password_reset_completed": "Password reset completed",
+  "admin.action.telegram_unlink_self": "Telegram unlink (self)",
   "admin.telegramUsername": "Telegram Username",
   "admin.telegramChatId": "Telegram Chat ID",
   "admin.telegramFieldHelp": "Optional. Usually filled automatically when the student links it themselves."

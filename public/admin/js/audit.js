@@ -22,7 +22,9 @@ function auditDetail(row) {
     case 'login':
       return m.ip ? `IP ${audEsc(m.ip)}` : '—';
     case 'telegram_bind_self':
-      return m.unlinked ? t('admin.auditDetailUnlinked') : `chat ${audEsc(maskChat(m.chat_id))}`;
+      return `chat ${audEsc(maskChat(m.chat_id))}`;
+    case 'telegram_unlink_self':
+      return `${audEsc(m.source === 'telegram_confirm' ? 'Telegram' : 'web')} · ${audEsc(t('admin.auditDetailUnlinked'))} ${audEsc(maskChat(m.previous_chat_id))}`;
     case 'telegram_bind_staff_override': {
       const src = m.source === 'excel_import' ? 'Excel' : t('admin.editStudent');
       return `${audEsc(src)} · chat ${audEsc(maskChat(m.chat_id))}`;
@@ -96,7 +98,7 @@ async function loadAudit() {
           </div>
           <div class="mt-1">${window.ui.pill(r.actor_type, r.actor_type === 'staff' ? 'blue' : r.actor_type === 'system' ? 'gray' : 'plain')}</div>
         </td>
-        <td>${window.ui.pill(actionLabel(r.action), r.action.startsWith('password_reset') ? 'amber' : r.action === 'login' ? 'green' : 'blue')}</td>
+        <td>${window.ui.pill(actionLabel(r.action), r.action.startsWith('password_reset') || r.action === 'telegram_unlink_self' ? 'amber' : r.action === 'login' ? 'green' : 'blue')}</td>
         <td>${target}</td>
         <td class="text-[color:var(--text-muted)] text-sm">${auditDetail(r)}</td>
       </tr>`;

@@ -79,4 +79,21 @@ async function redeemLinkCode(rawCode, chatId, tgUsername) {
   );
 }
 
-module.exports = { issueLinkCode, redeemLinkCode, LINK_TTL_MIN };
+/**
+ * Clear a student's Telegram binding and audit it. Shared by the website
+ * `DELETE /api/me/telegram` route (`source:'web'`) and the bot's OTP-confirmed
+ * `/unlink` → `/confirm` flow (`source:'telegram_confirm'`).
+ */
+async function unlinkSelf(user, source) {
+  const previousChatId = user.telegram_chat_id;
+  await User.setTelegramBinding(user.id, { chatId: null, username: null });
+  await AuditLog.record({
+    actorType: 'student',
+    actorId: user.id,
+    action: 'telegram_unlink_self',
+    targetUserId: user.id,
+    metadata: { previous_chat_id: previousChatId || null, source },
+  }).catch((e) => console.error('[audit] telegram_unlink_self', e));
+}
+
+module.exports = { issueLinkCode, redeemLinkCode, unlinkSelf, LINK_TTL_MIN };

@@ -47,19 +47,11 @@ function noteAttempt(map, key, windowMs) {
 }
 
 /**
- * Generate + send an OTP if `rawNim` is a real, Telegram-bound student. Silent in
- * every branch (the caller has already responded generically). Never throws to
- * the caller — the route wraps it in .catch().
+ * Mint + send an OTP for a known, Telegram-bound student. Shared core of both
+ * entry points below. `extraLine` is appended to the Telegram message (the
+ * `/changepass` path uses it to tell the user where to type the code).
  */
-async function requestReset(rawNim) {
-  const nim = String(rawNim || '').trim();
-  if (!nim) return;
-  if (throttled(requests, nim, MAX_REQ, REQ_WINDOW_MS)) return;
-  noteAttempt(requests, nim, REQ_WINDOW_MS);
-
-  const user = await User.findByNim(nim);
-  if (!user || user.role !== 'student' || !user.telegram_chat_id) return;
-
+async function issueResetOtp(user, extraLine = '') {
   // Invalidate any pending OTP, then drop already-consumed rows for this user.
   // ponytail: self-clean per user on each request — no cron/sweep.
   await db.run(
@@ -77,7 +69,7 @@ async function requestReset(rawNim) {
 
   await telegram.sendMessage(
     user.telegram_chat_id,
-    `Kode reset password Tekser kamu: ${code}\nBerlaku ${config.otpTtlMinutes} menit. Jangan bagikan ke siapa pun.`
+    `Kode reset password Tekser kamu: ${code}\nBerlaku ${config.otpTtlMinutes} menit. Jangan bagikan ke siapa pun.${extraLine}`
   );
   await AuditLog.record({
     actorType: 'student',
@@ -85,6 +77,38 @@ async function requestReset(rawNim) {
     action: 'password_reset_requested',
     targetUserId: user.id,
   }).catch((err) => console.error('[audit] password_reset_requested', err));
+}
+
+/**
+ * Website "Lupa Password?" entry point. Generate + send an OTP if `rawNim` is a
+ * real, Telegram-bound student. Silent in every branch (the caller has already
+ * responded generically). Never throws to the caller — the route wraps it in .catch().
+ */
+async function requestReset(rawNim) {
+  const nim = String(rawNim || '').trim();
+  if (!nim) return;
+  if (throttled(requests, nim, MAX_REQ, REQ_WINDOW_MS)) return;
+  noteAttempt(requests, nim, REQ_WINDOW_MS);
+
+  const user = await User.findByNim(nim);
+  if (!user || user.role !== 'student' || !user.telegram_chat_id) return;
+  await issueResetOtp(user);
+}
+
+/**
+ * Telegram `/changepass` entry point — the chat is already proven to belong to
+ * `user`, so no NIM lookup. Shares the same per-NIM request budget as the website
+ * flow (a user can't get 3 web + 3 Telegram OTPs an hour). Returns
+ * { ok:true } or { throttled:true }.
+ */
+async function requestResetForUser(user) {
+  if (throttled(requests, user.nim, MAX_REQ, REQ_WINDOW_MS)) return { throttled: true };
+  noteAttempt(requests, user.nim, REQ_WINDOW_MS);
+  await issueResetOtp(
+    user,
+    `\nBuka menu "Lupa Password?" di halaman login Tekser, lalu masukkan NIM ${user.nim} dan kode ini.`
+  );
+  return { ok: true };
 }
 
 /**
@@ -137,4 +161,4 @@ function _resetState() {
   verifies.clear();
 }
 
-module.exports = { requestReset, completeReset, _resetState, MIN_PASSWORD_LENGTH };
+module.exports = { requestReset, requestResetForUser, completeReset, _resetState, MIN_PASSWORD_LENGTH };

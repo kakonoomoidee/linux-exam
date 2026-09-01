@@ -264,6 +264,8 @@
   "student.telegramConnectBtn": "Hubungkan",
   "student.telegramDisconnectBtn": "Putuskan",
   "student.telegramModalTitle": "Hubungkan Telegram",
+  "student.telegramOpenBtn": "Buka di Telegram",
+  "student.telegramManualFallback": "Atau kirim manual:",
   "student.telegramStep1": "Buka Telegram dan cari {bot}",
   "student.telegramStep2": "Kirim pesan di bawah ini ke bot tersebut",
   "student.telegramStep3": "Tunggu konfirmasi muncul di halaman ini",
@@ -295,6 +297,7 @@
   "admin.action.telegram_bind_staff_override": "Ubah Telegram (staff)",
   "admin.action.password_reset_requested": "Minta reset password",
   "admin.action.password_reset_completed": "Reset password selesai",
+  "admin.action.telegram_unlink_self": "Putus Telegram (mandiri)",
   "admin.telegramUsername": "Telegram Username",
   "admin.telegramChatId": "Telegram Chat ID",
   "admin.telegramFieldHelp": "Opsional. Biasanya terisi otomatis saat mahasiswa menghubungkan sendiri."

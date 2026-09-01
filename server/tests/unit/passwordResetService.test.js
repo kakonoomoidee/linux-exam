@@ -123,4 +123,26 @@ describe('passwordResetService', () => {
     expect(await svc.completeReset('999', otp, '999')).toEqual({ ok: false, reason: 'weak' });
     expect((await svc.completeReset('999', otp, 'a-good-password')).ok).toBe(true);
   });
+
+  test('requestResetForUser mints an OTP for a chat-authenticated user (no NIM lookup)', async () => {
+    const s = await createStudent({ nim: 'tg1' });
+    await bindTelegram(s.id, '4242');
+    const r = await svc.requestResetForUser({ id: s.id, nim: s.nim, telegram_chat_id: '4242' });
+    expect(r).toEqual({ ok: true });
+    expect(telegram.sent[0].chatId).toBe('4242');
+    const row = await db.get('SELECT * FROM password_reset_otps WHERE user_id = $1 AND consumed_at IS NULL', [s.id]);
+    expect(row).toBeTruthy();
+    // the OTP still verifies through the normal completeReset path
+    expect((await svc.completeReset('tg1', lastOtp(), 'a-good-password')).ok).toBe(true);
+  });
+
+  test('requestReset and requestResetForUser share one per-NIM request budget', async () => {
+    const s = await createStudent({ nim: 'tg2' });
+    await bindTelegram(s.id, '4343');
+    const user = { id: s.id, nim: s.nim, telegram_chat_id: '4343' };
+    await svc.requestReset('tg2'); // 1
+    await svc.requestResetForUser(user); // 2
+    await svc.requestReset('tg2'); // 3
+    expect(await svc.requestResetForUser(user)).toEqual({ throttled: true }); // 4th, blocked
+  });
 });

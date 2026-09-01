@@ -128,10 +128,17 @@ Shipped simplifications, each with a known upgrade path. None block correctness
 for a single-process deployment (which is what this app is).
 
 - **Throttle state is in-memory** (`passwordResetService.js` — `requests` /
-  `verifies` Maps, same pattern as `lockService.js`). A process restart clears
-  the per-NIM request (3/hr) and verify (5/window) counters. Upgrade path: move
-  the counters to a `password_reset_throttle` table (or Redis) if the app ever
+  `verifies` Maps, same pattern as `lockService.js`; `telegramActionService.js`
+  does the same for the `/unlink` → `/confirm` OTP). A process restart clears the
+  per-NIM request (3/hr) and verify (5/window) counters, and the per-(chat,action)
+  counters. Upgrade path: move the counters to a table (or Redis) if the app ever
   runs more than one instance.
+- **Two OTP tables by design** (`password_reset_otps` vs `telegram_action_otps`).
+  A password-reset code and an `/unlink` confirmation code are structurally
+  non-interchangeable (different tables, different services). `telegram_action_otps`
+  is keyed by `chat_id` + a free-string `action` so a future confirmed action needs
+  no migration. `/changepass` deliberately reuses `password_reset_otps` (it *is* a
+  password reset) and shares the per-NIM request budget with the website flow.
 - **Long-poll offset is in-memory** (`lib/telegram.js` `RealTelegram._offset`).
   After a restart the bot re-reads the last few Telegram updates, so `/start
   <code>` delivery is at-least-once. Safe because link codes are single-use and
@@ -141,5 +148,6 @@ for a single-process deployment (which is what this app is).
   No cron. A student who requests once and never again leaves one consumed row
   behind forever — negligible, revisit only if the tables grow surprisingly.
 - **No automated coverage for the new student-facing JS** (forgot-password
-  screen, "Hubungkan Telegram" card) — same reason as finding #6: no jsdom
-  harness. Manual checklist is in the PR description (real-bot walkthrough).
+  screen, "Hubungkan Telegram" card, the `t.me/…?start=` deep-link button) —
+  same reason as finding #6: no jsdom harness. Manual checklist is in the PR
+  description (real-bot walkthrough).

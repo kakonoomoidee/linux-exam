@@ -12,6 +12,11 @@ const User = {
     return db.get('SELECT * FROM users WHERE id = $1', [id]);
   },
 
+  /** The student a Telegram chat is bound to, or undefined. */
+  findByTelegramChatId(chatId) {
+    return db.get('SELECT * FROM users WHERE telegram_chat_id = $1', [String(chatId)]);
+  },
+
   create({ nim, name, role = 'student', password_hash = null, kelas = null, telegram_username = null, telegram_chat_id = null }) {
     return db.run(
       `INSERT INTO users (nim, name, role, password_hash, kelas, telegram_username, telegram_chat_id)

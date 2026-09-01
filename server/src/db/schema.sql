@@ -154,3 +154,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target  ON audit_logs(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action  ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
+
+-- One-time codes that confirm a sensitive Telegram-side action (currently only
+-- account unlink). Entered back into the bot via `/confirm <otp>`, never the website.
+-- `action` keeps this reusable — a new action type needs no migration. Same
+-- lifecycle as password_reset_otps: bcrypt-hashed, short TTL, a fresh request
+-- consumes any pending one.
+CREATE TABLE IF NOT EXISTS telegram_action_otps (
+  id          SERIAL PRIMARY KEY,
+  chat_id     TEXT NOT NULL,
+  action      TEXT NOT NULL,            -- 'unlink'
+  otp_hash    TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_tg_action_otps_chat ON telegram_action_otps(chat_id, action);

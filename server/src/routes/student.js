@@ -6,7 +6,6 @@ const db = require('../db/connection');
 const Question = require('../models/Question');
 const Session = require('../models/Session');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
 const { Submission } = require('../models/Submission');
 const examService = require('../services/examService');
 const timerService = require('../services/timerService');
@@ -60,15 +59,8 @@ router.post('/me/telegram/link-code', async (req, res) => {
  * access, and re-linking still needs a valid session + a fresh code.
  */
 router.delete('/me/telegram', async (req, res) => {
-  const before = await User.findById(req.user.id);
-  await User.setTelegramBinding(req.user.id, { chatId: null, username: null });
-  AuditLog.record({
-    actorType: 'student',
-    actorId: req.user.id,
-    action: 'telegram_bind_self',
-    targetUserId: req.user.id,
-    metadata: { chat_id: null, unlinked: true, previous_chat_id: (before && before.telegram_chat_id) || null },
-  }).catch((err) => console.error('[audit] telegram self-unlink', err));
+  const user = await User.findById(req.user.id);
+  await telegramBindService.unlinkSelf(user, 'web');
   res.json({ linked: false });
 });
 
