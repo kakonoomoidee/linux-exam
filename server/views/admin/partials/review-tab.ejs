@@ -2,26 +2,13 @@
 
   <header class="mb-6">
     <h1 class="page-title" data-i18n="admin.tabReview">Review Nilai</h1>
-    <p class="page-subtitle max-w-prose" data-i18n="admin.reviewSubtitle">Tinjau hasil otomatis per soal dan override nilai bila perlu.</p>
+    <p class="page-subtitle max-w-prose" data-i18n="review.subtitle">Koreksi jawaban per sesi dan per mahasiswa: riwayat command di kiri, soal dan kunci jawaban di kanan.</p>
   </header>
 
-  <div class="card">
-    <div class="flex flex-wrap gap-2 items-center mb-4">
-      <select id="review-session-select" class="field w-auto min-w-[180px]"></select>
-      <select id="review-mhs-kelas-select" class="field w-auto min-w-[150px]"
-        aria-label="Pilih kelas"></select>
-      <input id="review-mhs-search" type="search" autocomplete="off"
-        class="field w-auto min-w-[200px]" data-i18n-ph="admin.reviewSearchPlaceholder"
-        placeholder="Cari NIM / nama…" />
-      <select id="review-mhs-select" class="field w-auto flex-1 min-w-[240px]"
-        aria-label="Pilih mahasiswa"></select>
-      <span id="review-mhs-search-empty" class="rk-search-empty hidden"
-        data-i18n="admin.reviewSearchNoHit">Tidak ada yang cocok</span>
-      <button id="review-load-btn" class="btn btn-primary btn-sm" data-i18n="admin.showBtn">Tampilkan</button>
-      <a id="export-csv-link" href="#" download
-        class="text-[color:var(--accent-hover)] hover:underline text-sm ml-auto"
-        data-i18n="admin.exportCsv">Export CSV Nilai</a>
-    </div>
-    <div id="review-table"></div>
-  </div>
+  <%/* Review Nilai v2: 3 levels rendered by /admin-assets/js/review-*.js —
+       sessions -> students of a session -> one student (side by side). */%>
+  <nav id="rv-crumbs" class="rv-crumbs" aria-label="Breadcrumb"></nav>
+  <div id="rv-level-sessions"></div>
+  <div id="rv-level-students" hidden></div>
+  <div id="rv-level-detail" hidden></div>
 </section>
