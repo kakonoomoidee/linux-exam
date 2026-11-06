@@ -11,6 +11,7 @@
     "test:coverage": "jest --coverage",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/scripts/seedSample.js",
+    "seed:review-demo": "node src/scripts/seedReviewDemo.js",
     "import-questions": "node src/scripts/importQuestions.js",
     "cleanup": "node src/scripts/cleanupContainers.js"
   },
