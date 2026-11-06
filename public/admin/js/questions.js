@@ -232,6 +232,9 @@ async function loadQuestionBank() {
         openQuestionForm(q);
       })
     );
+    box.querySelectorAll('.q-examples').forEach((btn) =>
+      btn.addEventListener('click', () => window.openSampleAnswersEditor(Number(btn.dataset.id), loadQuestionBank))
+    );
     box.querySelectorAll('.q-delete').forEach((btn) =>
       btn.addEventListener('click', async () => {
         const ok = await window.ui.confirm(t('admin.deleteQuestionConfirm'), {
@@ -253,6 +256,7 @@ function questionRow(q, isInstruktur) {
          <summary aria-label="${t('common.actions')}">⋮</summary>
          <div class="kebab-menu">
            <button class="kebab-item q-edit" data-id="${q.id}">${t('common.edit')}</button>
+           <button class="kebab-item q-examples" data-id="${q.id}">${t('review.editExamples')}</button>
            <button class="kebab-item danger q-delete" data-id="${q.id}">${t('common.delete')}</button>
          </div>
        </details>`

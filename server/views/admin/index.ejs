@@ -7,6 +7,7 @@
   <script>window.__I18N__ = <%- localesScript %>;</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/shared/theme.css" />
+  <link rel="stylesheet" href="/admin-assets/css/review.css" />
   <!-- Gate instruktur-only chrome before first paint; app.js re-syncs after login. -->
   <script>try{if(JSON.parse(atob((localStorage.getItem('tekser_admin_token')||'').split('.')[1]||'')).role==='instruktur')document.documentElement.classList.add('is-instruktur');}catch(e){}</script>
 </head>
@@ -66,7 +67,13 @@
   <script src="/admin-assets/js/app.js"></script>
   <script src="/admin-assets/js/sessions.js"></script>
   <script src="/admin-assets/js/questions.js"></script>
-  <script src="/admin-assets/js/review.js"></script>
+  <script src="/admin-assets/js/question-examples.js"></script>
+  <script src="/admin-assets/js/review-common.js"></script>
+  <script src="/admin-assets/js/review-summary.js"></script>
+  <script src="/admin-assets/js/review-sessions.js"></script>
+  <script src="/admin-assets/js/review-students.js"></script>
+  <script src="/admin-assets/js/review-question-row.js"></script>
+  <script src="/admin-assets/js/review-detail.js"></script>
   <script src="/admin-assets/js/grades.js"></script>
   <script src="/admin-assets/js/students.js"></script>
   <script src="/admin-assets/js/staff.js"></script>

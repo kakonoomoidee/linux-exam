@@ -41,6 +41,7 @@ const Question = {
     state_checker_script,
     level,
     ucp,
+    sample_answers,
   }) {
     let variantId = await Question.variantIdForIndex(variant_index);
     if (!variantId) {
@@ -55,8 +56,8 @@ const Question = {
     return db.run(
       `INSERT INTO questions
          (variant_id, order_index, story_text, story_text_en, point, check_type,
-          accepted_patterns, state_checker_script, level, ucp)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          accepted_patterns, state_checker_script, level, ucp, sample_answers)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (variant_id, ucp, order_index) DO UPDATE SET
          story_text = EXCLUDED.story_text,
          story_text_en = EXCLUDED.story_text_en,
@@ -64,7 +65,8 @@ const Question = {
          check_type = EXCLUDED.check_type,
          accepted_patterns = EXCLUDED.accepted_patterns,
          state_checker_script = EXCLUDED.state_checker_script,
-         level = EXCLUDED.level
+         level = EXCLUDED.level,
+         sample_answers = COALESCE(EXCLUDED.sample_answers, questions.sample_answers)
        RETURNING *`,
       [
         variantId,
@@ -77,6 +79,7 @@ const Question = {
         state_checker_script || null,
         normLevel(level),
         Number(ucp) === 2 ? 2 : 1,
+        Array.isArray(sample_answers) && sample_answers.length ? JSON.stringify(sample_answers) : null,
       ]
     );
   },
@@ -105,6 +108,25 @@ const Question = {
 
   remove(id) {
     return db.run('DELETE FROM questions WHERE id = $1', [id]);
+  },
+
+  /** Every question of one UCP bank across all variants, with its variant_index. */
+  listForUcp(ucp) {
+    return db.all(
+      `SELECT q.*, qv.variant_index FROM questions q
+       JOIN question_variants qv ON qv.id = q.variant_id
+       WHERE q.ucp = $1
+       ORDER BY qv.variant_index, q.order_index`,
+      [Number(ucp) === 2 ? 2 : 1]
+    );
+  },
+
+  /** Replace the readable answer key examples (already validated by answerKeyService). */
+  setSampleAnswers(id, answers) {
+    return db.run('UPDATE questions SET sample_answers = $1 WHERE id = $2 RETURNING *', [
+      answers.length ? JSON.stringify(answers) : null,
+      id,
+    ]);
   },
 };
 

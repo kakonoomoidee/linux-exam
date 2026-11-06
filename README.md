@@ -23,9 +23,11 @@ dosen kasih nilai parsial (0/25/50/75/100%).
 5. Waktu habis (atau submit manual) → container di-destroy, soal yang
    butuh validasi state (`mkdir`, `chmod`, dll) dicek terakhir kali sebelum
    container mati.
-6. Asisten dosen buka dashboard review, lihat command log tiap mahasiswa per
-   soal (termasuk command yang salah/typo — bukan cuma yang match), dan bisa
-   override nilai jadi 0/25/50/75/100%.
+6. Asisten dosen buka **Review Nilai** (sesi → mahasiswa → satu mahasiswa):
+   riwayat command di kiri, soal + kunci jawaban yang mudah dibaca di kanan.
+   Jawaban yang salah dideteksi "hampir benar" / "benar di riwayat" (cuma
+   saran), lalu dikoreksi 0/25/50/75/100% + catatan, dan nilai akhir per sesi
+   bisa diexport ke CSV/Excel.
 
 ## Struktur folder
 
@@ -114,6 +116,7 @@ docker compose up -d db     # PostgreSQL aja
 cd server
 npm install
 npm run seed                # sekali, buat akun admin + soal contoh
+npm run seed:review-demo    # opsional (dev): 2 sesi selesai + 10 mahasiswa dummy buat Review Nilai
 npm run dev                 # http://localhost:3000  (nodemon)
 ```
 

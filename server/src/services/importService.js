@@ -3,6 +3,7 @@ const Question = require('../models/Question');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const { normalizeKelas } = require('../lib/kelas');
+const { validateSampleAnswers } = require('./answerKeyService');
 
 /**
  * Expected column headers per row (case-insensitive, order doesn't matter):
@@ -15,6 +16,9 @@ const { normalizeKelas } = require('../lib/kelas');
  *   check_type     - "command_match" | "state_check" | "both" (default command_match)
  *   accepted_patterns - one or more regex patterns, separated by " | " (pipe with spaces)
  *   state_checker  - bash script text (only needed for state_check/both)
+ *   sample_answers - optional readable answer key: example commands, ONE PER LINE
+ *                    (not " | ": commands themselves contain pipes). Each must be
+ *                    accepted by the grader; invalid ones are reported as row errors.
  *
  * Sheet-name -> variant inference: if a row has no "variant" column, the sheet
  * name is scanned for a trailing digit (e.g. "Variant 3", "NIM akhir 7") and
@@ -64,6 +68,10 @@ function parseWorkbook(filePath) {
         check_type: normalizedRow.check_type || 'command_match',
         accepted_patterns: patterns,
         state_checker_script: normalizedRow.state_checker || null,
+        sample_answers: String(normalizedRow.sample_answers || '')
+          .split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter(Boolean),
         ucp: ucpRaw === '' ? 1 : parseInt(ucpRaw, 10),
         _sheet: sheetName,
       });
@@ -87,6 +95,11 @@ async function importFromFile(filePath) {
   const errors = [];
 
   for (const q of questions) {
+    const { errors: answerErrors } = validateSampleAnswers(q, q.sample_answers);
+    if (answerErrors.length) {
+      errors.push({ ...q, error: `sample_answers tidak cocok dengan pattern: ${answerErrors.map((e) => e.answer).join(' ; ')}` });
+      continue;
+    }
     if (!q.story_text) {
       errors.push({ ...q, error: 'story_text kosong' });
       continue;

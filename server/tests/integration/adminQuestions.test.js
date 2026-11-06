@@ -81,6 +81,7 @@ describe('GET /api/admin/questions/template.xlsx', () => {
       'check_type',
       'accepted_patterns',
       'state_checker',
+      'sample_answers', // Review Nilai v2: readable answer key, one example per line
     ]);
     // at least one example row
     expect(XLSX.utils.sheet_to_json(sheet).length).toBeGreaterThanOrEqual(2);

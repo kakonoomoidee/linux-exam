@@ -20,6 +20,7 @@ const authRoutes = require('./routes/auth');
 const adminSessions = require('./routes/adminSessions');
 const adminQuestions = require('./routes/adminQuestions');
 const adminReview = require('./routes/adminReview');
+const adminGrading = require('./routes/adminGrading');
 const adminStaff = require('./routes/adminStaff');
 const adminStudents = require('./routes/adminStudents');
 const adminAudit = require('./routes/adminAudit');
@@ -40,6 +41,7 @@ function buildApp() {
   app.use('/api/admin/sessions', adminSessions);
   app.use('/api/admin/questions', adminQuestions);
   app.use('/api/admin/review', adminReview);
+  app.use('/api/admin/grading', adminGrading); // Review Nilai v2
   app.use('/api/admin/staff', adminStaff);
   app.use('/api/admin/students', adminStudents);
   app.use('/api/admin/audit', adminAudit);

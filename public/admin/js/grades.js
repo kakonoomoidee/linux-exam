@@ -44,8 +44,9 @@ async function loadGradesTable() {
   const sessionId = document.getElementById('grades-session-select').value;
   if (!sessionId) return;
 
+  // same file as Review Nilai's export (shared grade calculation, see gradeService)
   document.getElementById('grades-export-csv-link').href =
-    `${API}/admin/review/sessions/${sessionId}/export.csv?token=${adminToken}`;
+    `${API}/admin/grading/sessions/${sessionId}/export.csv?token=${adminToken}`;
 
   const table = document.getElementById('grades-table');
   table.innerHTML = gSkeleton(3);
