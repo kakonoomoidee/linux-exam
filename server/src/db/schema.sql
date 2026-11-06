@@ -170,3 +170,12 @@ CREATE TABLE IF NOT EXISTS telegram_action_otps (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_tg_action_otps_chat ON telegram_action_otps(chat_id, action);
+
+-- Review Nilai v2: readable answer key + correction note. Additive and idempotent —
+-- safe to run on an existing production database with data (schema.sql runs on every boot).
+-- Rollback: src/db/rollback/2026-11-06-review-nilai-v2.sql
+--   sample_answers: JSON array of example commands an instruktur wrote for the key;
+--                   each must be accepted by the grader (answerKeyService.validateSampleAnswers).
+--   review_note:    free-text note saved with a manual correction (who/when = reviewed_by/reviewed_at).
+ALTER TABLE questions   ADD COLUMN IF NOT EXISTS sample_answers TEXT;
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS review_note    TEXT;

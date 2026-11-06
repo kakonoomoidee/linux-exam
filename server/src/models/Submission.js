@@ -49,6 +49,19 @@ const CommandLog = {
       [sessionId]
     );
   },
+
+  /** Bare command rows for a whole session (review v2 near-miss analysis). */
+  listRawForSession(sessionId) {
+    return db.all(
+      `SELECT cl.id, cl.participant_id, cl.question_id, cl.raw_command, cl.normalized_command,
+              cl.exit_code, cl.created_at
+       FROM command_logs cl
+       JOIN session_participants sp ON sp.id = cl.participant_id
+       WHERE sp.session_id = $1
+       ORDER BY cl.created_at ASC, cl.id ASC`,
+      [sessionId]
+    );
+  },
 };
 
 const Submission = {
@@ -88,6 +101,47 @@ const Submission = {
       [finalScore, reviewerUserId, participantId, questionId]
     );
     return Submission.get(participantId, questionId);
+  },
+
+  /**
+   * Review v2 correction: score + note + who/when in one write. The caller has
+   * already validated the percent and that the question belongs to the
+   * participant's variant.
+   */
+  async saveReview(participantId, questionId, { finalScore, note, reviewerId }) {
+    await Submission.ensure(participantId, questionId);
+    await db.run(
+      `UPDATE submissions
+       SET final_score = $1, review_note = $2, reviewed_by = $3, reviewed_at = now()
+       WHERE participant_id = $4 AND question_id = $5`,
+      [finalScore, note || null, reviewerId, participantId, questionId]
+    );
+    return Submission.get(participantId, questionId);
+  },
+
+  /** Undo a correction: the auto-grade counts again. */
+  async clearReview(participantId, questionId) {
+    await db.run(
+      `UPDATE submissions
+       SET final_score = NULL, review_note = NULL, reviewed_by = NULL, reviewed_at = NULL
+       WHERE participant_id = $1 AND question_id = $2`,
+      [participantId, questionId]
+    );
+    return Submission.get(participantId, questionId);
+  },
+
+  /** Every submission in a session, with the reviewer's display name. */
+  listForSession(sessionId) {
+    return db.all(
+      `SELECT s.id, s.participant_id, s.question_id, s.auto_result, s.auto_score, s.final_score,
+              s.matched_command_log_id, s.reviewed_by, s.reviewed_at, s.review_note,
+              COALESCE(ru.name, ru.nim) AS reviewer_name
+       FROM submissions s
+       JOIN session_participants sp ON sp.id = s.participant_id
+       LEFT JOIN users ru ON ru.id = s.reviewed_by
+       WHERE sp.session_id = $1`,
+      [sessionId]
+    );
   },
 
   listForParticipant(participantId) {
