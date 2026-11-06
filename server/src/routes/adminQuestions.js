@@ -5,6 +5,7 @@ const XLSX = require('xlsx');
 const { requireStaff, requireInstruktur } = require('../middleware/auth');
 const Question = require('../models/Question');
 const { importFromFile } = require('../services/importService');
+const { buildAnswerKey, validateSampleAnswers } = require('../services/answerKeyService');
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ const TEMPLATE_COLUMNS = [
   'check_type',
   'accepted_patterns',
   'state_checker',
+  'sample_answers',
 ];
 const TEMPLATE_ROWS = [
   {
@@ -33,6 +35,7 @@ const TEMPLATE_ROWS = [
     check_type: 'command_match',
     accepted_patterns: '^cat\\s+catatan\\.txt$ | ^less\\s+catatan\\.txt$',
     state_checker: '',
+    sample_answers: 'cat catatan.txt\nless catatan.txt', // one example per line (commands may contain "|")
   },
   {
     ucp: 1,
@@ -44,6 +47,7 @@ const TEMPLATE_ROWS = [
     check_type: 'both',
     accepted_patterns: '^mkdir\\s+(-p\\s+)?~?/?arsip$',
     state_checker: 'test -d ~/arsip && echo PASS || echo FAIL',
+    sample_answers: 'mkdir arsip\nmkdir -p ~/arsip',
   },
   {
     ucp: 2,
@@ -55,6 +59,7 @@ const TEMPLATE_ROWS = [
     check_type: 'state_check',
     accepted_patterns: '',
     state_checker: '[ "$(stat -c %a ~/rahasia.txt 2>/dev/null)" = "600" ] && echo PASS || echo FAIL',
+    sample_answers: 'chmod 600 rahasia.txt\nchmod u=r,go= rahasia.txt',
   },
 ];
 
@@ -140,6 +145,32 @@ router.delete('/:id', requireInstruktur, async (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Soal tidak ditemukan' });
   await Question.remove(req.params.id);
   res.json({ ok: true });
+});
+
+// --- Readable answer key (Review Nilai v2) ---
+
+const answerKeyPayload = (q) => ({
+  question: { id: q.id, check_type: q.check_type, accepted_patterns: q.accepted_patterns, sample_answers: q.sample_answers },
+  key: buildAnswerKey(q),
+});
+
+router.get('/:id/answer-key', requireStaff, async (req, res) => {
+  const q = /^\d+$/.test(req.params.id) ? await Question.findById(req.params.id) : null;
+  if (!q) return res.status(404).json({ error: 'Soal tidak ditemukan' });
+  res.json(answerKeyPayload(q));
+});
+
+/**
+ * Body: { sample_answers: string[] }. Each answer must be accepted by the
+ * grader for one of the question's patterns (max 3 per pattern); state_check
+ * questions take any command. 400 lists every rejected answer.
+ */
+router.put('/:id/sample-answers', requireInstruktur, async (req, res) => {
+  const q = /^\d+$/.test(req.params.id) ? await Question.findById(req.params.id) : null;
+  if (!q) return res.status(404).json({ error: 'Soal tidak ditemukan' });
+  const { answers, errors } = validateSampleAnswers(q, req.body && req.body.sample_answers);
+  if (errors.length) return res.status(400).json({ error: 'Contoh jawaban tidak valid', details: errors });
+  res.json(answerKeyPayload(await Question.setSampleAnswers(q.id, answers)));
 });
 
 module.exports = router;
